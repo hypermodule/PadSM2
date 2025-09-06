@@ -84,5 +84,5 @@ This will produce `MyMod_P.{utoc,ucas,pak}`. Copy these 3 files to the game's Pa
 
 ## License
 
-PadSM is licensed under the MIT license (see `LICENSE.txt`). It uses the third-party libraries
+PadSM2 is licensed under the MIT license (see `LICENSE.txt`). It uses the third-party libraries
 CUE4Parse and UAssetAPI (see `NOTICE.txt` for their licenses).

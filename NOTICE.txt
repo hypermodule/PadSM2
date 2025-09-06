@@ -1,6 +1,6 @@
 This program uses the following third-party libraries:
 
-* UAssetAPI (https://github.com/atenfyr/UAssetAPI/blob/master/LICENSE) - Copyright (c) 2023 Atenfyr. Licensed under the MIT License.
+* UAssetAPI (https://github.com/atenfyr/UAssetAPI) - Copyright (c) 2023 Atenfyr. Licensed under the MIT License.
 
 * CUE4Parse (https://github.com/FabianFG/CUE4Parse) - Licensed under the Apache License 2.0.
 
