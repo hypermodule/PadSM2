@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PadSM2": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\user\\Desktop\\MyMod_P\\Augusta\\Content\\Art\\World\\ZN00_Global\\Coins\\Coin_Quarter\\SM_Coin_Quarter_A.uasset"
+    }
+  }
+}

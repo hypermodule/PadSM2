@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CUE4Parse", "Lib\CUE4Parse\CUE4Parse.csproj", "{50DA1414-F41B-A856-4F1E-C92ACB365EFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PadSM2", "PadSM2\PadSM2.csproj", "{751863D6-49E3-4E79-A47F-76F76B0979CD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UAssetAPI", "Lib\UAssetAPI\UAssetAPI.csproj", "{178417EC-1177-413E-BE85-C83AECD64279}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{50DA1414-F41B-A856-4F1E-C92ACB365EFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50DA1414-F41B-A856-4F1E-C92ACB365EFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50DA1414-F41B-A856-4F1E-C92ACB365EFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50DA1414-F41B-A856-4F1E-C92ACB365EFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{751863D6-49E3-4E79-A47F-76F76B0979CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{751863D6-49E3-4E79-A47F-76F76B0979CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{751863D6-49E3-4E79-A47F-76F76B0979CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{751863D6-49E3-4E79-A47F-76F76B0979CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{178417EC-1177-413E-BE85-C83AECD64279}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{178417EC-1177-413E-BE85-C83AECD64279}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{178417EC-1177-413E-BE85-C83AECD64279}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{178417EC-1177-413E-BE85-C83AECD64279}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9AA745E5-7560-47FD-ADCA-40840EF63FDE}
+	EndGlobalSection
+EndGlobal
