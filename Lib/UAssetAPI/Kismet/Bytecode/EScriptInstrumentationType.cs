@@ -1,4 +1,4 @@
-﻿namespace UAssetAPI.Kismet.Bytecode
+namespace UAssetAPI.Kismet.Bytecode
 {
 	public enum EScriptInstrumentationType : byte {
 		Class = 0,

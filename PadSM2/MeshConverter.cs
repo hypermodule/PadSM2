@@ -1,4 +1,4 @@
-﻿using UAssetAPI;
+using UAssetAPI;
 using UAssetAPI.ExportTypes;
 using UAssetAPI.PropertyTypes.Objects;
 using UAssetAPI.PropertyTypes.Structs;
@@ -28,7 +28,7 @@ public static class MeshConverter
 
         var usmap = GetUsmap("PadSM2.Generic.usmap");
 
-        return new UAsset(assetReader, EngineVersion.VER_UE5_4, usmap, useSeparateBulkDataFiles: true);
+        return new UAsset(assetReader, EngineVersion.VER_UE5_6, usmap, useSeparateBulkDataFiles: true);
     }
 
     private static StructPropertyData CreateResponseChannel(UAsset asset, int index, string channelValue, string responseValue)
@@ -77,8 +77,8 @@ public static class MeshConverter
 
         collisionResponse.Value.Add(responseArray);
 
-        var bodySetup = (NormalExport)asset.Exports.Where(x => x.ObjectName.Value.ToString() == "BodySetup").First();
-        var defaultInstance = (StructPropertyData)bodySetup.Data.Where(x => x.Name.Value.ToString() == "DefaultInstance").First();
+        var bodySetup = (NormalExport)asset.Exports.First(x => x.ObjectName.Value.ToString() == "BodySetup");
+        var defaultInstance = (StructPropertyData)bodySetup.Data.First(x => x.Name.Value.ToString() == "DefaultInstance");
         defaultInstance.Value[1] = collisionResponse;
 
         return asset;

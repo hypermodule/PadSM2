@@ -1,10 +1,10 @@
-﻿namespace PadSM2;
+namespace PadSM2;
 
 public class Program
 {
     public static void Main(string[] args)
     {
-        Console.WriteLine("PadSM2 v0.0.1");
+        Console.WriteLine("PadSM2 v0.0.2");
 
         if (args.Length != 1)
         {

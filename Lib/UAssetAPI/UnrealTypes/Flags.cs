@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UAssetAPI.ExportTypes;
 
 namespace UAssetAPI.UnrealTypes
