@@ -8,7 +8,7 @@ using CUE4Parse.UE4.Versions;
 namespace PadSM2;
 
 /// <summary>
-/// Class for inserting an 1i32 (little-endian) into each StaticMeshSection
+/// Class for inserting a 1i32 (little-endian) into each StaticMeshSection
 /// of a static mesh asset (not sure what role it plays, but Augusta meshes
 /// have this).
 /// </summary>

@@ -13,7 +13,7 @@ namespace CUE4Parse.MappingsProvider
             FileName = Path.GetFileName(_path);
             Load(path);
         }
-
+        
         public FileUsmapTypeMappingsProvider(byte[] usmap)
         {
             _path = string.Empty;

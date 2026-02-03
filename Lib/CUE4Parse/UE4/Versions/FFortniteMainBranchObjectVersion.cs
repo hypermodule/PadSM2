@@ -647,7 +647,67 @@ public static class FFortniteMainBranchObjectVersion
 
         // Cooked CPU-side morph target points are now stored internally in the same compressed format as the GPU morph data.
         MorphTargetCookedCPUDataCompressed,
-
+        
+        // AnimNext variables converted to references
+        AnimNextVariableReferences,
+        
+        // The default distortion rendering mode used by the Lens Component is now the Lens Distortion Scene View Extension
+        LensComponentDefaultToDistortionSVE,
+        
+        // Animation default blend option changed from Linear to HermiteCubic (aka SmoothStep, ease in / ease out)
+        ChangeDefaultAlphaBlendType,
+        
+        // Moved Position/Velocity/Projection Iteration Counts from FChaosVDFRigidParticleControlFlags to FChaosVDParticleDynamicMisc
+        PerParticleIterationCountMovedToDynamicMisc,
+        
+        // Added missing custom serialization for some properties in the ParticleDynamicMisc structure used by the Chaos Visual Debugger
+        AddedMissingSerializationForPropertiesInDynamicMisc,
+        
+        // Change default value for deprecated bEnableWorldPartitionGenerationSources
+        PCGDeprecateWorldPartitionGenerationSources,
+        
+        // Refactored the composite (plugin) actor scene capture management.
+        CompositeActorSceneCaptureRefactor,
+        
+        // Moved HLOD Layer properties to an editor only optional object
+        HLODLayerEditorOnlyObject,
+        
+        // Deduplicated particle debug names serialization in the Chaos Visual Debugger
+        DeduplicatedDebugNameSerializationInCVD,
+        
+        // Add BloomGaussianIntensity and BloomConvolutionIntensity
+        SpecializeBloomIntensity,
+        
+        // Add support for world partition actor component descriptors
+        WorldPartitionActorComponentDesc,
+        
+        // Migrate Non-Edit layer landscapes to use the edit layer (ULandscapeEditLayer) system
+        MigrateLandscapeNonEditLayerToEditLayer,
+        
+        // FDynamicMeshAttributeSet has Morph Targets.
+        DynamicMeshAttributesMorphTargets,
+        
+        // Introduce landscape advanced weight blending
+        LandscapeAdvancedWeightBlending,
+        
+        // Add support for FastGeo transformer setting assets
+        FastGeoTransformerSettingAssets,
+        
+        // UAF can now generate procedural systems for assets
+        UAFProceduralSystems,
+        
+        // Firefight: version 228 was introduced and backed out, adding it back to allow assets created in the meantime to load
+        Firefight_228,
+        
+        // Add default runtime state to FDataLayerInstanceDes
+        WorldPartitionDataLayerDefaultRuntimeState,
+        
+        // Introducing FGuid to UAF variable entries
+        UAFVariablesGuid,
+        
+        // Introducing FGuid cached to FAnimNext(Soft)VariableReference
+        UAFVariableReferenceGUID,
+        
         // -----<new versions can be added above this line>-------------------------------------------------
         VersionPlusOne,
         LatestVersion = VersionPlusOne - 1
@@ -663,6 +723,7 @@ public static class FFortniteMainBranchObjectVersion
 
         return Ar.Game switch
         {
+              EGame.GAME_Aion2 => Type.WorldPartitionHLODActorDescSerializeSourceHLODLayer,
             < EGame.GAME_UE4_20 => Type.BeforeCustomVersionWasAdded,
             < EGame.GAME_UE4_21 => Type.CachedMaterialQualityNodeUsage,
             < EGame.GAME_UE4_22 => Type.FoliageLazyObjPtrToSoftObjPtr,
@@ -678,6 +739,7 @@ public static class FFortniteMainBranchObjectVersion
             < EGame.GAME_UE5_5 => Type.SkeletalHalfEdgeData,
             < EGame.GAME_UE5_6 => Type.SolverIterationsDataSupportInChaosVisualDebugger,
             < EGame.GAME_UE5_7 => Type.PCGChangedSurfaceSamplerDefaultGridCreationMode,
+            < EGame.GAME_UE5_8 => Type.LandscapeAdvancedWeightBlending,
             _ => Type.LatestVersion
         };
     }

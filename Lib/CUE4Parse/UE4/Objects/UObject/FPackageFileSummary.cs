@@ -70,6 +70,8 @@ namespace CUE4Parse.UE4.Objects.UObject
         public readonly int SoftPackageReferencesOffset;
         public readonly int SearchableNamesOffset;
         public readonly int ThumbnailTableOffset;
+        public readonly int ImportTypeHierarchiesCount;
+        public readonly int ImportTypeHierarchiesOffset;
         public FSHAHash SavedHash;
         public readonly FGuid Guid;
         public readonly FGuid PersistentGuid;
@@ -80,7 +82,7 @@ namespace CUE4Parse.UE4.Objects.UObject
         public readonly int PackageSource;
         public bool bUnversioned;
         public readonly int AssetRegistryDataOffset;
-        public long OffsetOfBulkDataStartOffset;
+        public long OffsetOfBulkDataStartOffset; // PadSM2 change to CUE4Parse 
         public int BulkDataStartOffset; // serialized as long
         public readonly int WorldTileInfoDataOffset;
         public readonly int[] ChunkIds;
@@ -98,7 +100,7 @@ namespace CUE4Parse.UE4.Objects.UObject
             ChunkIds = Array.Empty<int>();
         }
 
-        internal FPackageFileSummary(FArchive Ar)
+        public FPackageFileSummary(FArchive Ar)
         {
             Tag = Ar.Read<uint>();
 
@@ -217,19 +219,6 @@ namespace CUE4Parse.UE4.Objects.UObject
                     Log.Warning("File version is too new or too old");
                 }
 
-                if (Ar.Ver >= EUnrealEngineObjectUE5Version.PACKAGE_SAVED_HASH)
-                {
-                    SavedHash = new FSHAHash(Ar);
-                    TotalHeaderSize = Ar.Read<int>();
-                }
-
-                CustomVersionContainer = new FCustomVersionContainer(Ar, FCustomVersionContainer.DetermineSerializationFormat(legacyFileVersion));
-
-                if (Ar.Versions.CustomVersions == null && CustomVersionContainer.Versions.Length > 0)
-                {
-                    Ar.Versions.CustomVersions = CustomVersionContainer;
-                }
-
                 if (FileVersionUE.FileVersionUE4 == 0 && FileVersionUE.FileVersionUE5 == 0 && FileVersionLicenseeUE == 0)
                 {
                     // this file is unversioned, remember that, then use current versions
@@ -245,6 +234,19 @@ namespace CUE4Parse.UE4.Objects.UObject
                     {
                         Ar.Ver = FileVersionUE;
                     }
+                }
+
+                if ((Ar.Versions.bExplicitVer ? Ar.Ver : FileVersionUE) >= EUnrealEngineObjectUE5Version.PACKAGE_SAVED_HASH)
+                {
+                    SavedHash = new FSHAHash(Ar);
+                    TotalHeaderSize = Ar.Read<int>();
+                }
+
+                CustomVersionContainer = new FCustomVersionContainer(Ar, FCustomVersionContainer.DetermineSerializationFormat(legacyFileVersion));
+
+                if (Ar.Versions.CustomVersions == null && CustomVersionContainer.Versions.Length > 0)
+                {
+                    Ar.Versions.CustomVersions = CustomVersionContainer;
                 }
             }
             else
@@ -330,6 +332,17 @@ namespace CUE4Parse.UE4.Objects.UObject
 
             ThumbnailTableOffset = Ar.Read<int>();
 
+            if (FileVersionUE >= EUnrealEngineObjectUE5Version.IMPORT_TYPE_HIERARCHIES)
+            {
+                ImportTypeHierarchiesCount = Ar.Read<int>();
+                ImportTypeHierarchiesOffset = Ar.Read<int>();
+            }
+            else
+            {
+                ImportTypeHierarchiesCount = 0;
+                ImportTypeHierarchiesOffset = 0;
+            }
+            
             if (FileVersionUE < EUnrealEngineObjectUE5Version.PACKAGE_SAVED_HASH)
             {
                 Guid = Ar.Read<FGuid>();
@@ -452,7 +465,7 @@ namespace CUE4Parse.UE4.Objects.UObject
 
             if (FileVersionUE >= EUnrealEngineObjectUE4Version.SUMMARY_HAS_BULKDATA_OFFSET)
             {
-                OffsetOfBulkDataStartOffset = Ar.Position;
+                OffsetOfBulkDataStartOffset = Ar.Position; // PadSM2 change to CUE4Parse
                 BulkDataStartOffset = (int) Ar.Read<long>();
             }
 

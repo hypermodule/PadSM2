@@ -30,6 +30,7 @@ public class UMaterialInterface : UUnrealMaterial
 
     public override void Deserialize(FAssetArchive Ar, long validPos)
     {
+        if(Ar.Game == EGame.GAME_WorldofJadeDynasty) Ar.Position += 24;
         base.Deserialize(Ar, validPos);
         bUseMobileSpecular = GetOrDefault<bool>(nameof(bUseMobileSpecular));
         MobileSpecularPower = GetOrDefault<float>(nameof(MobileSpecularPower));
@@ -38,10 +39,10 @@ public class UMaterialInterface : UUnrealMaterial
         MobileBaseTexture = GetOrDefault<UTexture>(nameof(MobileBaseTexture));
         MobileNormalTexture = GetOrDefault<UTexture>(nameof(MobileNormalTexture));
         MobileMaskTexture = GetOrDefault<UTexture>(nameof(MobileMaskTexture));
-
         TextureStreamingData = GetOrDefault(nameof(TextureStreamingData), Array.Empty<FMaterialTextureInfo>());
 
         var bSavedCachedExpressionData = FUE5ReleaseStreamObjectVersion.Get(Ar) >= FUE5ReleaseStreamObjectVersion.Type.MaterialInterfaceSavedCachedData && Ar.ReadBoolean();
+        if (Ar.Game == EGame.GAME_DeadByDaylight) Ar.SkipFString();
         if (bSavedCachedExpressionData)
         {
             CachedExpressionData = new FStructFallback(Ar, "MaterialCachedExpressionData");
@@ -104,12 +105,12 @@ public class UMaterialInterface : UUnrealMaterial
             ParseCachedData(parameters, CachedExpressionData);
         }
     }
-    
+
     private void ParseCachedDataLegacy(CMaterialParams2 parameters, FStructFallback materialParameters)
     {
         if (!materialParameters.TryGetAllValues(out FStructFallback[] runtimeEntries, "RuntimeEntries"))
             return;
-        
+
         if (materialParameters.TryGetValue(out float[] scalarValues, "ScalarValues") &&
             runtimeEntries.Length > 0 &&
             runtimeEntries[0].TryGetValue(out FMaterialParameterInfo[] scalarParameterInfos, "ParameterInfos"))
@@ -135,12 +136,12 @@ public class UMaterialInterface : UUnrealMaterial
             }
         }
     }
-    
+
     private void ParseCachedData(CMaterialParams2 parameters, FStructFallback materialParameters)
     {
         if (!materialParameters.TryGetAllValues(out FStructFallback[] runtimeEntries, "RuntimeEntries"))
             return;
-        
+
         if (materialParameters.TryGetValue(out float[] scalarValues, "ScalarValues") &&
             runtimeEntries.Length > 0 &&
             runtimeEntries[0].TryGetValue(out FMaterialParameterInfo[] scalarParameterInfos, "ParameterInfoSet"))
@@ -180,7 +181,7 @@ public class UMaterialInterface : UUnrealMaterial
             else
             {
                 var ShaderMaps = new FByteBulkData(Ar);
-                var ShaderMapsAr = new FByteArchive("ShaderMaps", ShaderMaps.Data, Ar.Versions);
+                using var ShaderMapsAr = new FByteArchive("ShaderMaps", ShaderMaps.Data, Ar.Versions);
                 resourceAr = new FMaterialResourceProxyReader(ShaderMapsAr);
             }
 
