@@ -41,7 +41,7 @@ public static class MeshPadder
 
     private static Package ParseAsset(ByteAsset uasset, ByteAsset uexp)
     {
-        var versions = new VersionContainer(EGame.GAME_UE5_4);
+        var versions = new VersionContainer(EGame.GAME_UE5_6);
 
         var uassetArchive = new FByteArchive(uasset.Name, uasset.Bytes, versions);
         var uexpArchive = new FByteArchive(uexp.Name, uexp.Bytes, versions);
@@ -81,6 +81,16 @@ public static class MeshPadder
         {
             staticMeshSections.AddRange(lod.Sections);
         }
+
+        if (staticMesh.RenderData.RayTracingProxy?.LODs != null)
+        {
+            foreach (var lod in staticMesh.RenderData.RayTracingProxy.LODs)
+            {
+                if (lod?.Sections != null) staticMeshSections.AddRange(lod.Sections);
+            }
+        }
+
+        staticMeshSections.Sort((a, b) => a.OffsetOfPaddingForGrounded2.CompareTo(b.OffsetOfPaddingForGrounded2));
 
         // Insert padding bytes into each StaticMeshSection
         byte[] padBytes = [1, 0, 0, 0];

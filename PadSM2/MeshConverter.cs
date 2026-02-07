@@ -9,7 +9,7 @@ namespace PadSM2;
 
 public static class MeshConverter
 {
-    private static Usmap GetUsmap(string path)
+    public static Usmap GetUsmap(string path)
     {
         var usmapStream = Util.GetEmbeddedResource(path);
         var usmap = new Usmap();
@@ -18,7 +18,7 @@ public static class MeshConverter
         return usmap;
     }
 
-    private static UAsset ParseVanillaAsset(ByteAsset uasset, ByteAsset uexp)
+    public static UAsset ParseAsset(ByteAsset uasset, ByteAsset uexp, Usmap usmap, CustomSerializationFlags customSerializationFlags = CustomSerializationFlags.None)
     {
         var assetStream = new MemoryStream();
         assetStream.Write(uasset.Bytes);
@@ -26,9 +26,7 @@ public static class MeshConverter
         assetStream.Position = 0;
         var assetReader = new AssetBinaryReader(assetStream);
 
-        var usmap = GetUsmap("PadSM2.Generic.usmap");
-
-        return new UAsset(assetReader, EngineVersion.VER_UE5_6, usmap, useSeparateBulkDataFiles: true);
+        return new UAsset(assetReader, EngineVersion.VER_UE5_6, usmap, useSeparateBulkDataFiles: true, customSerializationFlags: customSerializationFlags);
     }
 
     private static StructPropertyData CreateResponseChannel(UAsset asset, int index, string channelValue, string responseValue)
@@ -55,11 +53,15 @@ public static class MeshConverter
 
     public static UAsset ConvertToAugusta(ByteAsset uasset, ByteAsset uexp)
     {
-        var asset = ParseVanillaAsset(uasset, uexp);
-
+        var vanillaUsmap = GetUsmap("PadSM2.Generic.usmap");
+        var asset = ParseAsset(uasset, uexp, vanillaUsmap);
+        
         // Switch the asset over to using a schema from Augusta
         var augustaUsmap = GetUsmap("PadSM2.Augusta.usmap");
         asset.Mappings = augustaUsmap;
+
+        // Turn off unversioned property serialization
+        //asset.PackageFlags &= ~EPackageFlags.PKG_UnversionedProperties;
 
         // Replace CollisionProfileName with CollisionResponses array
         var collisionResponse = new StructPropertyData(FName.FromString(asset, "CollisionResponses"), FName.FromString(asset, "CollisionResponse"));

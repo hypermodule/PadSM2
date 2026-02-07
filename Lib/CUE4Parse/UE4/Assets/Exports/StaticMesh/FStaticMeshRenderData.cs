@@ -18,6 +18,7 @@ public class FStaticMeshRenderData
 
     public FStaticMeshLODResources[]? LODs;
     public FNaniteResources? NaniteResources;
+    public FStaticMeshRayTracingProxy? RayTracingProxy; // PadSM2 change to CUE4Parse
     public FBoxSphereBounds? Bounds;
     public bool bLODsShareStaticLighting;
     public float[] ScreenSize = [];
@@ -80,7 +81,7 @@ public class FStaticMeshRenderData
                 var bHasRayTracingProxy = Ar.ReadBoolean();
                 if (bHasRayTracingProxy)
                 {
-                    _ = new FStaticMeshRayTracingProxy(Ar); // RayTracingProxy
+                    RayTracingProxy = new FStaticMeshRayTracingProxy(Ar); // RayTracingProxy // PadSM2 change to CUE4Parse
                 }
             }
 
