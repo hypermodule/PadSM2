@@ -1,7 +1,7 @@
 ﻿# PadSM2 (Pad Static Mesh for Grounded 2)
 
-Small tool created to make a cooked UE5.4 static mesh asset compatible with the game Grounded 2
-(version 0.1.3 at least).
+Small tool created to make a cooked UE5.6 static mesh asset compatible with the game Grounded 2
+(version 0.3.0.2 at least).
 
 The tool performs the following operations on the static mesh asset:
 
@@ -10,6 +10,8 @@ The tool performs the following operations on the static mesh asset:
  * Uses the game's custom schema for serializing
 
  * Replaces the asset's default `CollisionProfileName` with a `CollisionResponses` array
+
+ * Changes the mesh asset to use versioned property serialization
 
 ## Requirements
 
@@ -31,7 +33,7 @@ Follow these steps to replace the coin static mesh, which is located at:
 Augusta/Content/Art/World/ZN00_Global/Coins/Coin_Quarter/SM_Coin_Quarter_A.uasset
 ```
 
-1. Use Unreal Editor to create a blank UE5.4 project named `Augusta`.
+1. Use Unreal Editor to create a blank UE5.6 project named `Augusta`.
 
 2. In the content browser, create the directory structure of the target asset:
 
@@ -75,7 +77,7 @@ PadSM2.exe C:\Users\user\Desktop\MyMod_P\Augusta\Content\Art\World\ZN00_Global\C
 
 ```
 cd C:\Users\user\Desktop
-retoc.exe to-zen MyMod_P MyMod_P.utoc --version UE5_4
+retoc.exe to-zen MyMod_P MyMod_P.utoc --version UE5_6
 ```
 
 This will produce `MyMod_P.{utoc,ucas,pak}`. Copy these 3 files to the game's Paks directory.
