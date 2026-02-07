@@ -1,3 +1,4 @@
+using System;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.GameplayTags;
 using CUE4Parse.UE4.Objects.Meshes;
@@ -54,7 +55,7 @@ public class FSkeletalMaterial
             case EGame.GAME_MarvelRivals:
                 _ = new FGameplayTagContainer(Ar);
                 break;
-            case EGame.GAME_FragPunk or EGame.GAME_DaysGone:
+            case EGame.GAME_FragPunk or EGame.GAME_DaysGone or EGame.GAME_WorldofJadeDynasty or EGame.GAME_AssaultFireFuture:
                 Ar.Position += 4;
                 break;
             case EGame.GAME_Strinova:

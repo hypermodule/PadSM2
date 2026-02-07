@@ -1,4 +1,4 @@
-﻿namespace UAssetAPI.UnrealTypes;
+namespace UAssetAPI.UnrealTypes;
 
 public enum EInterpCurveMode : byte {
 	CIM_Linear = 0,

@@ -9,11 +9,8 @@
 
   <ItemGroup>
     <None Remove="Augusta.usmap" />
-    <None Remove="Generic.usmap" />
-  </ItemGroup>
-
-  <ItemGroup>
     <EmbeddedResource Include="Augusta.usmap" />
+    <None Remove="Generic.usmap" />
     <EmbeddedResource Include="Generic.usmap" />
   </ItemGroup>
 

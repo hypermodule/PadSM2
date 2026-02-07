@@ -18,6 +18,7 @@ public class FStaticMeshRenderData
 
     public FStaticMeshLODResources[]? LODs;
     public FNaniteResources? NaniteResources;
+    public FStaticMeshRayTracingProxy? RayTracingProxy; // PadSM2 change to CUE4Parse
     public FBoxSphereBounds? Bounds;
     public bool bLODsShareStaticLighting;
     public float[] ScreenSize = [];
@@ -34,8 +35,8 @@ public class FStaticMeshRenderData
         Ar.Position += Ar.Game switch
         {
             EGame.GAME_HYENAS => 1,
-            EGame.GAME_DuneAwakening => 4,
-            EGame.GAME_DaysGone => Ar.Read<int>() * 4,
+            EGame.GAME_DuneAwakening or EGame.GAME_Squad => 4,
+            EGame.GAME_DaysGone => Ar.Read<int>() * 4 + 4,
             _ => 0
         };
 
@@ -49,7 +50,7 @@ public class FStaticMeshRenderData
                 var bulkData = new FByteBulkData(Ar);
                 if (bulkData.Header.ElementCount > 0 && bulkData.Data != null)
                 {
-                    var tempAr = new FByteArchive("StaticMeshLODResources", bulkData.Data, Ar.Versions);
+                    using var tempAr = new FByteArchive("StaticMeshLODResources", bulkData.Data, Ar.Versions);
                     LODs[i] = new FStaticMeshLODResources(tempAr);
                 }
                 else
@@ -80,7 +81,7 @@ public class FStaticMeshRenderData
                 var bHasRayTracingProxy = Ar.ReadBoolean();
                 if (bHasRayTracingProxy)
                 {
-                    var rayTracingProxy = new FStaticMeshRayTracingProxy(Ar);
+                    RayTracingProxy = new FStaticMeshRayTracingProxy(Ar); // RayTracingProxy // PadSM2 change to CUE4Parse
                 }
             }
 
@@ -92,7 +93,7 @@ public class FStaticMeshRenderData
             var stripped = false;
             if (Ar.Ver >= EUnrealEngineObjectUE4Version.RENAME_WIDGET_VISIBILITY)
             {
-                var stripDataFlags = Ar.Read<FStripDataFlags>();
+                var stripDataFlags = new FStripDataFlags(Ar);
                 stripped = stripDataFlags.IsAudioVisualDataStripped();
                 if (Ar.Game >= EGame.GAME_UE4_21)
                 {
@@ -107,7 +108,7 @@ public class FStaticMeshRenderData
                     var bValid = Ar.ReadBoolean();
                     if (bValid)
                     {
-                        if (Ar.Game is >= EGame.GAME_UE5_0 or EGame.GAME_TerminullBrigade)
+                        if (Ar.Game is >= EGame.GAME_UE5_0 or EGame.GAME_TerminullBrigade or EGame.GAME_WutheringWaves)
                         {
                             _ = new FDistanceFieldVolumeData5(Ar);
                         }
@@ -116,11 +117,13 @@ public class FStaticMeshRenderData
                             _ = new FDistanceFieldVolumeData(Ar);
                         }
                     }
+                    if (Ar.Game is EGame.GAME_TheFinals)
+                        _ = Ar.ReadArray(() => new FDistanceFieldVolumeData5(Ar));
                 }
             }
         }
 
-        if (Ar.Game == EGame.GAME_ArenaBreakoutInifinite)
+        if (Ar.Game == EGame.GAME_ArenaBreakoutInfinite)
         {
             var flags = new FStripDataFlags(Ar);
             if (Ar.ReadBoolean())
@@ -140,7 +143,7 @@ public class FStaticMeshRenderData
 
         if (Ar.Versions["StaticMesh.HasLODsShareStaticLighting"])
         {
-            if (Ar.Game >= EGame.GAME_UE5_6)
+            if (Ar.Game is >= EGame.GAME_UE5_6 or EGame.GAME_GrayZoneWarfare)
             {
                 var bRenderDataFlags = Ar.Read<byte>();
                 bLODsShareStaticLighting = (bRenderDataFlags & 1) != 0;
@@ -217,7 +220,7 @@ public class FStaticMeshRenderData
             }
         }
 
-        if (Ar.Game >= EGame.GAME_UE5_4) _ = Ar.Read<FStripDataFlags>();
+        if (Ar.Game >= EGame.GAME_UE5_4) _ = new FStripDataFlags(Ar);
     }
 
     private void SerializeInlineDataRepresentations(FAssetArchive Ar)

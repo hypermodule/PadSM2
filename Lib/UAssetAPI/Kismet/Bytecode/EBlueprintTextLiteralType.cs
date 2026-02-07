@@ -1,4 +1,4 @@
-﻿namespace UAssetAPI.Kismet.Bytecode
+namespace UAssetAPI.Kismet.Bytecode
 {
     /// <summary>
     /// Kinds of text literals
