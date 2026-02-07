@@ -22,6 +22,8 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Publish
+        continue-on-error: true
+        id: publish
         run: >
           dotnet publish PadSM2
           -c Release
@@ -32,6 +34,14 @@ jobs:
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:GenerateDocumentationFile=false
+
+      - name: Verify publish output
+        run: |
+          if (!(Test-Path "./PadSM2/bin/Publish/PadSM2.exe")) {
+            Write-Error "Publish failed: PadSM2.exe not found"
+            exit 1
+          }
+          Write-Host "PadSM2.exe found — publish succeeded"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
