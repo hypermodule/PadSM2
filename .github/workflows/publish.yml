@@ -1,0 +1,40 @@
+name: Build exe
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        run: >
+          dotnet publish PadSM2
+          -c Release
+          --no-self-contained
+          -r win-x64
+          -o "./PadSM2/bin/Publish/"
+          -p:PublishReadyToRun=false
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:GenerateDocumentationFile=false
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PadSM2
+          path: PadSM2/bin/Publish/
