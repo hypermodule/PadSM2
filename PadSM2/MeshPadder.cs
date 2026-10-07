@@ -40,7 +40,7 @@ public static class MeshPadder
 
     private static Package ParseAsset(ByteAsset uasset, ByteAsset uexp)
     {
-        var versions = new VersionContainer(EGame.GAME_UE5_6);
+        var versions = new VersionContainer(EGame.GAME_UE5_7);
 
         var uassetArchive = new FByteArchive(uasset.Name, uasset.Bytes, versions);
         var uexpArchive = new FByteArchive(uexp.Name, uexp.Bytes, versions);
