@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
+using System.Text;
 using CUE4Parse.UE4.Readers;
 
 namespace CUE4Parse.UE4.Assets.Readers;
@@ -8,35 +6,38 @@ namespace CUE4Parse.UE4.Assets.Readers;
 public class FMutableArchive : FArchive
 {
     private readonly FArchive _baseArchive;
-    
+    private readonly Dictionary<int, object?> _ptrs = [];
+
     public FMutableArchive(FArchive baseArchive)
     {
         _baseArchive = baseArchive;
         Versions = baseArchive.Versions;
     }
-    
+
     public override int Read(byte[] buffer, int offset, int count) => _baseArchive.Read(buffer, offset, count);
     public override long Seek(long offset, SeekOrigin origin) => _baseArchive.Seek(offset, origin);
     public override string ReadFString() => new string(_baseArchive.ReadArray<char>()).Replace("\0", string.Empty);
-    
-    public T ReadPtr<T>() where T : unmanaged => _baseArchive.Read<int>() == -1 ? default : _baseArchive.Read<T>();
-    public T? ReadPtr<T>(Func<T> getter) where T : class => _baseArchive.Read<int>() == -1 ? null : getter();
-    public T[] ReadPtrArray<T>(Func<T> getter)
-    {
-        var length = _baseArchive.Read<int>();
-        if (length == 0) return [];
+    public override string ReadString() => Encoding.UTF8.GetString(_baseArchive.ReadArray<byte>());
 
-        var list = new List<T>(length);
-        for (var i = 0; i < length; i++)
+    public T? ReadPtr<T>() where T : unmanaged => _baseArchive.Read<int>() == -1 ? null : _baseArchive.Read<T>();
+    public T? ReadPtr<T>(Func<T> func) where T : class
+    {
+        var id = _baseArchive.Read<int>();
+        if (id == -1) return null;
+
+        if (!_ptrs.TryGetValue(id, out var ptr))
         {
-            var id = _baseArchive.Read<int>();
-            if (id == -1) continue;
-            
-            list.Add(getter());
+            ptr = func.Invoke();
+            _ptrs[id] = ptr;
         }
 
-        return list.ToArray();
+        if (ptr is T result) return result;
+
+        Log.Warning("Ptr type mismatch, expected {Expected}, got {Actual}", typeof(T), ptr?.GetType());
+        return null;
     }
+
+    public T?[] ReadPtrArray<T>(Func<T> getter) where T : class => ReadArray(() => ReadPtr(getter));
 
     public override bool CanSeek => _baseArchive.CanSeek;
     public override long Length => _baseArchive.Length;

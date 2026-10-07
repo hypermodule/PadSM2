@@ -8,7 +8,7 @@ namespace CUE4Parse.UE4.Assets.Exports.Wwise;
 [StructFallback]
 public readonly struct FWwiseMediaCookedData
 {
-    public readonly int MediaId;
+    public readonly uint MediaId;
     public readonly FName MediaPathName;
     public readonly int PrefetchSize;
     public readonly int MemoryAlignment;
@@ -19,7 +19,7 @@ public readonly struct FWwiseMediaCookedData
 
     public FWwiseMediaCookedData(FStructFallback fallback)
     {
-        MediaId = fallback.GetOrDefault<int>(nameof(MediaId));
+        MediaId = (uint)fallback.GetOrDefault<int>(nameof(MediaId), comparisonType: StringComparison.OrdinalIgnoreCase);
         MediaPathName = fallback.GetOrDefault<FName>(nameof(MediaPathName));
         PrefetchSize = fallback.GetOrDefault<int>(nameof(PrefetchSize));
         MemoryAlignment = fallback.GetOrDefault<int>(nameof(MemoryAlignment));
@@ -29,8 +29,5 @@ public readonly struct FWwiseMediaCookedData
         PackagedFile = FWwisePackagedFile.CreatePackagedFile(fallback, nameof(PackagedFile));
     }
 
-    public void SerializeBulkData(FAssetArchive Ar)
-    {
-        PackagedFile?.SerializeBulkData(Ar);
-    }
+    public void SerializeBulkData(FAssetArchive Ar) => PackagedFile?.SerializeBulkData(Ar);
 }

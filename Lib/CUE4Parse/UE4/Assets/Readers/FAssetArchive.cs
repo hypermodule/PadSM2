@@ -1,22 +1,18 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets.Utils;
 using CUE4Parse.UE4.Exceptions;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Readers;
-using Serilog;
+using CUE4Parse.UE4.Versions;
 
 namespace CUE4Parse.UE4.Assets.Readers
 {
     public class FAssetArchive : FArchive
     {
+        
         private readonly Dictionary<PayloadType, Func<FByteBulkDataHeader?, FAssetArchive?>> _payloads;
         private FArchive _baseArchive;
 
@@ -44,7 +40,11 @@ namespace CUE4Parse.UE4.Assets.Readers
         public override FName ReadFName()
         {
             var nameIndex = Read<int>();
-            var extraIndex = Read<int>();
+            var extraIndex = 0;
+            if (Ver >= EUnrealEngineObjectUE3Version.FNAME_CHANGE_NAME_SPLIT)
+            {
+                extraIndex = Read<int>();
+            }
 #if !NO_FNAME_VALIDATION
             if (nameIndex < 0 || nameIndex >= Owner!.NameMap.Length)
             {
@@ -53,6 +53,9 @@ namespace CUE4Parse.UE4.Assets.Readers
 #endif
             return new FName(Owner.NameMap[nameIndex], nameIndex, extraIndex);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SkipFName() => Position += Ver >= EUnrealEngineObjectUE3Version.FNAME_CHANGE_NAME_SPLIT ? 2 * sizeof(int) : sizeof(int);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual bool TestReadFName()

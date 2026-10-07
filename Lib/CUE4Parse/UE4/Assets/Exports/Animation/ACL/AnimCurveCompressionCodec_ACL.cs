@@ -1,64 +1,36 @@
-using System;
 using System.Runtime.InteropServices;
 using CUE4Parse.ACL;
-using CUE4Parse.UE4.Assets.Readers;
-using CUE4Parse.UE4.Objects.Engine.Curves;
+using CUE4Parse.UE4.Objects.Engine.Animation;
 
 namespace CUE4Parse.UE4.Assets.Exports.Animation.ACL;
 
 public class AnimCurveCompressionCodec_ACL : UAnimCurveCompressionCodec
 {
-    public override unsafe FFloatCurve[] ConvertCurves(UAnimSequence animSeq)
+    public override unsafe FFloatCurve[] ConvertCurves(FSmartName[] names, byte[] data)
     {
-        var curveNames = animSeq.CompressedCurveNames;
-        var numCurves = curveNames.Length;
-
-        if (numCurves == 0 || animSeq.CompressedCurveByteStream is null)
-        {
-            return [];
-        }
-
-        var compressedTracks = new CompressedTracks(animSeq.CompressedCurveByteStream);
+        using var compressedTracks = new CompressedTracks(data);
         var header = compressedTracks.GetTracksHeader();
-        var numSamples = header.NumSamples;
+        var numSamples = (int) header.NumSamples;
+        var numTracks = (int) header.NumTracks;
 
-        var floatKeys = new float[numCurves * numSamples];
-        fixed (float* floatKeysPtr = floatKeys)
+        if (numTracks != names.Length)
         {
-            nReadCurveACLData(compressedTracks.Handle, floatKeysPtr);
+            Log.Warning("ACL curve track count {NumTracks} does not match curve name count {NumNames}", numTracks, names.Length);
         }
-        
-        var floatCurves = new FFloatCurve[numCurves];
-        for (var curveIndex = 0; curveIndex < numCurves; curveIndex++)
-        {
-            var curveKeys = new float[numSamples];
-            var offset = curveIndex * numSamples;
-            Array.Copy(floatKeys, offset, curveKeys, 0, numSamples);
 
-            var floatCurve = new FFloatCurve
+        var floatKeys = new float[numTracks * numSamples];
+        if (floatKeys.Length > 0)
+        {
+            fixed (float* floatKeysPtr = floatKeys)
             {
-                CurveName = animSeq.CompressedCurveNames[curveIndex].DisplayName,
-                FloatCurve = new FRichCurve
-                {
-                    Keys = new FRichCurveKey[numSamples]
-                }
-            };
-            
-            for (var sampleIndex = 0; sampleIndex < numSamples; sampleIndex++)
-            {
-                floatCurve.FloatCurve.Keys[sampleIndex] = new FRichCurveKey
-                {
-                    Value = curveKeys[sampleIndex],
-                    Time = sampleIndex / header.SampleRate
-                };
+                nReadCurveACLData(compressedTracks.Handle, floatKeysPtr);
             }
-
-            floatCurves[curveIndex] = floatCurve;
         }
 
-        return floatCurves;
+        return UAnimCurveCompressionCodec_UniformIndexable.ExtractUniformFloatCurves(names, Math.Min(numTracks, names.Length),
+            floatKeys, numSamples, header.SampleRate);
     }
-    
+
     [DllImport(ACLNative.LIB_NAME)]
     private static extern unsafe void nReadCurveACLData(IntPtr compressedTracks, float* outFloatKeys);
 }

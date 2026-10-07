@@ -1,4 +1,3 @@
-using System;
 using CUE4Parse.UE4.Assets.Exports.BuildData;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -11,17 +10,22 @@ namespace CUE4Parse.UE4.Assets.Exports.Component.Lights;
 
 public class ULightComponentBase : USceneComponent
 {
-    public float Intensity { get; protected set; }
-    public FColor LightColor { get; private set; }
-    public uint CastShadows { get; private set; }
+    public float Intensity { get; protected set; } = MathF.PI;
+    public FColor LightColor { get; private set; } = new(255, 255, 255, 255);
+    public bool CastShadows { get; private set; } = true;
 
     public override void Deserialize(FAssetArchive Ar, long validPos)
     {
         base.Deserialize(Ar, validPos);
 
-        Intensity = GetOrDefault(nameof(Intensity), GetOrDefault("Brightness", MathF.PI));
-        LightColor = GetOrDefault(nameof(LightColor), new FColor(255, 255, 255, 255));
-        CastShadows = GetOrDefault(nameof(CastShadows), 1u);
+        Intensity = GetOrDefault(nameof(Intensity), Intensity);
+        LightColor = GetOrDefault(nameof(LightColor), LightColor);
+        CastShadows = GetOrDefault(nameof(CastShadows), CastShadows);
+
+        if (Ar.Ver < EUnrealEngineObjectUE4Version.INVERSE_SQUARED_LIGHTS_DEFAULT)
+        {
+            Intensity = GetOrDefault("Brightness", MathF.PI);
+        }
     }
 
     public FLinearColor GetLightColor()
@@ -37,9 +41,9 @@ public class ULightComponent : ULightComponentBase
     public float Temperature { get; private set; }
     public float MaxDrawDistance { get; private set; }
     public float MaxDistanceFadeRange { get; private set; }
-    public uint bUseTemperature { get; private set; }
+    public bool bUseTemperature { get; private set; }
     public FPackageIndex IESTexture { get; private set; }
-    public uint bUseIESBrightness { get; private set; }
+    public bool bUseIESBrightness { get; private set; }
     public float IESBrightnessScale { get; private set; }
     public FStaticShadowDepthMapData? LegacyData { get; private set; }
 
@@ -50,9 +54,9 @@ public class ULightComponent : ULightComponentBase
         Temperature = GetOrDefault(nameof(Temperature), 6500.0f);
         MaxDrawDistance = GetOrDefault(nameof(MaxDrawDistance), 0.0f);
         MaxDistanceFadeRange = GetOrDefault(nameof(MaxDistanceFadeRange), 0.0f);
-        bUseTemperature = GetOrDefault(nameof(bUseTemperature), 0u);
+        bUseTemperature = GetOrDefault(nameof(bUseTemperature), false);
         IESTexture = GetOrDefault(nameof(IESTexture), new FPackageIndex());
-        bUseIESBrightness = GetOrDefault(nameof(bUseIESBrightness), 0u);
+        bUseIESBrightness = GetOrDefault(nameof(bUseIESBrightness), false);
         IESBrightnessScale = GetOrDefault(nameof(IESBrightnessScale), 1.0f);
 
         if (Ar.Ver >= EUnrealEngineObjectUE4Version.STATIC_SHADOW_DEPTH_MAPS)
@@ -63,7 +67,13 @@ public class ULightComponent : ULightComponentBase
             }
         }
 
-        if (Ar.Game == EGame.GAME_Valorant) Ar.Position += 24; // Zero FVector, 1.0f, -1 int, 1.0f
+        /*if (Ar.Ver > EUnrealEngineObjectUE3Version.ADDED_LIGHT_VOLUME_SUPPORT && Ar.Ver < EUnrealEngineObjectUE3Version.REMOVE_UNUSED_LIGHTING_PROPERTIES)
+        {
+            Ar.ReadArray(() => new FConvexVolume(Ar)); // InclusionConvexVolumes
+            Ar.ReadArray(() => new FConvexVolume(Ar)); // ExclusionConvexVolumes
+        }*/
+
+        if (Ar.Game == GAME_Valorant) Ar.Position += 24; // Zero FVector, 1.0f, -1 int, 1.0f
     }
 
     public virtual ELightUnits GetLightUnits() => ELightUnits.Unitless;
@@ -91,6 +101,8 @@ public class ULocalLightComponent : ULightComponent
 
         AttenuationRadius = GetOrDefault(nameof(AttenuationRadius), 1000.0f);
         IntensityUnits = GetOrDefault(nameof(IntensityUnits), Owner.Provider.DefaultLightUnit);
+
+        if (Ar.Game is GAME_LordOfMysteries) Ar.Position += 24;
     }
 
     public override ELightUnits GetLightUnits() => IntensityUnits;
@@ -130,6 +142,45 @@ public class USpotLightComponent : UPointLightComponent
         return MathF.Cos(GetHalfConeAngle());
     }
 }
+
+
+public class UDominantSpotLightComponent : UPointLightComponent
+{
+    public short[] DominantLightShadowMap;
+
+    public override void Deserialize(FAssetArchive Ar, long validPos)
+    {
+        // Before super
+        if (Ar.Ver >= EUnrealEngineObjectUE3Version.SPOTLIGHT_DOMINANTSHADOW_TRANSITION && Ar.Game < GAME_UE4_0)
+        {
+            DominantLightShadowMap = Ar.ReadArray<short>();
+        }
+
+        base.Deserialize(Ar, validPos);
+    }
+}
+
+public class UDominantDirectionalLightComponent : UPointLightComponent
+{
+    public short[]? DominantLightShadowMap;
+
+    public override void Deserialize(FAssetArchive Ar, long validPos)
+    {
+        // Before super
+        if (Ar.Ver >= EUnrealEngineObjectUE3Version.DOMINANTLIGHT_NORMALSHADOWS && Ar.Game < GAME_UE4_0)
+        {
+            DominantLightShadowMap = Ar.ReadArray<short>();
+        }
+
+        base.Deserialize(Ar, validPos);
+    }
+}
+public class UDominantPointLightComponent : UPointLightComponent;
+
+public class ULightEnvironmentComponent : UActorComponent;
+
+public class UParticleLightEnvironmentComponent : UPointLightComponent;
+public class UDynamicLightEnvironmentComponent : ULightEnvironmentComponent;
 
 public class UPointLightComponent : ULocalLightComponent
 {
@@ -232,16 +283,63 @@ public class URectLightComponent : ULocalLightComponent
 
 public class UDirectionalLightComponent : ULightComponent
 {
-    public float LightSourceAngle { get; private set; }
+    public float LightSourceAngle { get; private set; } = 0.5357f;
     public float LightSourceSoftAngle { get; private set; }
+    public bool bAtmosphereSunLight { get; private set; } = true;
+    public int AtmosphereSunLightIndex { get; private set; }
+
+    public UDirectionalLightComponent()
+    {
+        Intensity = 10.0f; // kill PI from ULightComponentBase
+    }
 
     public override void Deserialize(FAssetArchive Ar, long validPos)
     {
         base.Deserialize(Ar, validPos);
 
-        LightSourceAngle = GetOrDefault(nameof(LightSourceAngle), 0.5357f);
-        LightSourceSoftAngle = GetOrDefault(nameof(LightSourceSoftAngle), 0.0f);
+        LightSourceAngle = GetOrDefault(nameof(LightSourceAngle), LightSourceAngle);
+        LightSourceSoftAngle = GetOrDefault(nameof(LightSourceSoftAngle), LightSourceSoftAngle);
+        bAtmosphereSunLight = GetOrDefault(nameof(bAtmosphereSunLight), bAtmosphereSunLight);
+        AtmosphereSunLightIndex = GetOrDefault(nameof(AtmosphereSunLightIndex), AtmosphereSunLightIndex);
+
+        if (FUE5MainStreamObjectVersion.Get(Ar) < FUE5MainStreamObjectVersion.Type.DirLightsAreAtmosphereLightsByDefault)
+        {
+            bAtmosphereSunLight = GetOrDefault("bUsedAsAtmosphereSunLight", false);
+        }
     }
 }
 
-public class USkyLightComponent : ULightComponentBase;
+public enum ESkyLightSourceType : byte
+{
+    SLS_CapturedScene,
+    SLS_SpecifiedCubemap,
+    SLS_MAX
+}
+
+public class USkyLightComponent : ULightComponentBase
+{
+    public ESkyLightSourceType SourceType { get; private set; } = ESkyLightSourceType.SLS_CapturedScene;
+    public FPackageIndex? Cubemap { get; private set; }
+    public bool bLowerHemisphereIsBlack { get; private set; } = true;
+    public FLinearColor LowerHemisphereColor { get; private set; } = new(0.0f, 0.0f, 0.0f, 1.0f);
+
+    public USkyLightComponent()
+    {
+        Intensity = 1.0f; // kill PI from ULightComponentBase
+    }
+
+    public override void Deserialize(FAssetArchive Ar, long validPos)
+    {
+        base.Deserialize(Ar, validPos);
+
+        SourceType = GetOrDefault(nameof(SourceType), SourceType);
+        Cubemap = GetOrDefault(nameof(Cubemap), Cubemap);
+        bLowerHemisphereIsBlack = GetOrDefault(nameof(bLowerHemisphereIsBlack), bLowerHemisphereIsBlack);
+        LowerHemisphereColor = GetOrDefault(nameof(LowerHemisphereColor), LowerHemisphereColor);
+
+        if (Ar.Ver >= EUnrealEngineObjectUE4Version.SKYLIGHT_MOBILE_IRRADIANCE_MAP && !(FReleaseObjectVersion.Get(Ar) >= FReleaseObjectVersion.Type.SkyLightRemoveMobileIrradianceMap))
+        {
+            // DummyIrradianceEnvironmentMap
+        }
+    }
+}

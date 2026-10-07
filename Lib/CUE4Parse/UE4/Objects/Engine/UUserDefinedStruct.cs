@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets.Readers;
@@ -23,10 +22,9 @@ public enum EUserDefinedStructureStatus
     UDSS_Duplicate
 }
 
-public class UUserDefinedStruct : UStruct
+public class UUserDefinedStruct : UScriptStruct
 {
     public EUserDefinedStructureStatus Status;
-    public uint StructFlags;
     public List<FPropertyTag>? DefaultProperties { get; set; }
 
     public override void Deserialize(FAssetArchive Ar, long validPos)
@@ -36,8 +34,6 @@ public class UUserDefinedStruct : UStruct
         Status = GetOrDefault<EUserDefinedStructureStatus>(nameof(Status));
         if (Flags.HasFlag(EObjectFlags.RF_ClassDefaultObject)) return;
         if (Status != EUserDefinedStructureStatus.UDSS_UpToDate) return;
-
-        StructFlags = Ar.Read<uint>();
 
         if (FFrameworkObjectVersion.Get(Ar) < FFrameworkObjectVersion.Type.UserDefinedStructsStoreDefaultInstance) return;
         if (Ar.HasUnversionedProperties)
@@ -66,6 +62,5 @@ public class UUserDefinedStruct : UStruct
             serializer.Serialize(writer, property.Tag);
         }
         writer.WriteEndObject();
-
     }
 }

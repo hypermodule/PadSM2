@@ -13,6 +13,7 @@ namespace CUE4Parse.UE4.AssetRegistry.Objects
         public readonly FName PackageName;
         public readonly FGuid PackageGuid;
         public readonly FMD5Hash? CookedHash;
+        public readonly FMD5Hash? SourceFileMD5;
         public readonly FName[]? ImportedClasses;
         public readonly long DiskSize;
         public readonly FPackageFileVersion FileVersionUE;
@@ -36,7 +37,11 @@ namespace CUE4Parse.UE4.AssetRegistry.Objects
                 PackageSavedHash = new FSHAHash(Ar);
             }
 
-            if (Ar.Header.Version >= FAssetRegistryVersionType.AddedCookedMD5Hash)
+            if (Ar.Header.Version < FAssetRegistryVersionType.RemovedMD5Hash)
+            {
+                SourceFileMD5 = new FMD5Hash(Ar);
+            }
+            else if (Ar.Header.Version >= FAssetRegistryVersionType.AddedCookedMD5Hash)
             {
                 CookedHash = new FMD5Hash(Ar);
             }
@@ -59,7 +64,6 @@ namespace CUE4Parse.UE4.AssetRegistry.Objects
 
                 FileVersionLicenseeUE = Ar.Read<int>();
                 Flags = Ar.Read<uint>();
-                if (Ar.Game is EGame.GAME_MarvelRivals) Ar.Position += 4;
                 CustomVersions = new FCustomVersionContainer(Ar);
             }
             if (Ar.Header.Version >= FAssetRegistryVersionType.PackageImportedClasses)

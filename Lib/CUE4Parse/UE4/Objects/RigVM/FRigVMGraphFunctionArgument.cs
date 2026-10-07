@@ -1,7 +1,8 @@
-using System.Collections.Generic;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.Core.i18N;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.UObject;
+using CUE4Parse.UE4.Versions;
 
 namespace CUE4Parse.UE4.Objects.RigVM;
 
@@ -16,6 +17,8 @@ public struct FRigVMGraphFunctionArgument
     public string DefaultValue;
     public bool bIsConst;
     public Dictionary<string, FText> PathToTooltip;
+    public bool bIsInputVariable = false;
+    public FGuid? Guid;
 
     public FRigVMGraphFunctionArgument(FAssetArchive Ar)
     {
@@ -28,5 +31,9 @@ public struct FRigVMGraphFunctionArgument
         DefaultValue = Ar.ReadFString();
         bIsConst = Ar.ReadBoolean();
         PathToTooltip = Ar.ReadMap(Ar.ReadFString, () => new FText(Ar));
+        if (FRigVMObjectVersion.Get(Ar) >= FRigVMObjectVersion.Type.FunctionArgumentCanRepresentInputVariable)
+            bIsInputVariable = Ar.ReadBoolean();
+        if (FRigVMObjectVersion.Get(Ar) >= FRigVMObjectVersion.Type.GuidForFunctions)
+            Guid = Ar.Read<FGuid>();
     }
 }

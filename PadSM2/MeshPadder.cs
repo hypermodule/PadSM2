@@ -1,5 +1,4 @@
 using CUE4Parse.FileProvider;
-using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Readers;
@@ -35,7 +34,7 @@ public static class MeshPadder
 
         return new StreamedFileProvider("game", pathComparer: null)
         {
-            MappingsContainer = new FileUsmapTypeMappingsProvider(usmapBytes)
+            MappingsContainer = new MemoryUsmapTypeMappingsProvider(usmapBytes)
         };
     }
 
