@@ -15,7 +15,7 @@ namespace UAssetAPI.UnrealTypes;
 /// The actual array index will be (-FPackageIndex - 1)
 /// </summary>
 [JsonConverter(typeof(FPackageIndexJsonConverter))]
-public class FPackageIndex
+public class FPackageIndex : IComparable
 {
     /// <summary>
     /// Values greater than zero indicate that this is an index into the ExportMap.
@@ -110,13 +110,19 @@ public class FPackageIndex
     public T ToExport<T>(UAsset asset) where T : Export
     {
         if (!IsExport() || Index > asset.Exports.Count) throw new InvalidOperationException("Index = " + Index + "; cannot call ToExport()");
-        return (T)asset.Exports[Index-1];
+        return (T)asset.Exports[Index - 1];
     }
 
     public override bool Equals(object obj)
     {
         if (!(obj is FPackageIndex comparingPackageIndex)) return false;
         return comparingPackageIndex.Index == this.Index;
+    }
+
+    public int CompareTo(object obj)
+    {
+        if (!(obj is FPackageIndex comparingPackageIndex)) return 0;
+        return Index.CompareTo(comparingPackageIndex.Index);
     }
 
     public static bool operator <(FPackageIndex first, FPackageIndex second)
@@ -157,6 +163,7 @@ public class FPackageIndex
     public FPackageIndex(AssetBinaryReader reader)
     {
         Index = reader.ReadInt32();
+        if ((reader?.Asset?.Exports != null && Index > reader.Asset.Exports.Count) || (reader?.Asset?.Imports != null && Index < -reader.Asset.Imports.Count)) throw new InvalidOperationException($"Invalid FPackageIndex value {Index} was read");
     }
 
     public int Write(AssetBinaryWriter writer)

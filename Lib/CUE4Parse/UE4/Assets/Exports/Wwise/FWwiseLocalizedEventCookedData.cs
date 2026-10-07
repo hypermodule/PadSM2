@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Assets.Utils;
@@ -13,18 +12,13 @@ public readonly struct FWwiseLocalizedEventCookedData
 {
     public readonly Dictionary<FWwiseLanguageCookedData, FWwiseEventCookedData?> EventLanguageMap;
     public readonly FName DebugName;
-    public readonly int EventId;
+    public readonly uint EventId;
 
     public FWwiseLocalizedEventCookedData(FStructFallback fallback)
     {
-        EventLanguageMap = new Dictionary<FWwiseLanguageCookedData, FWwiseEventCookedData?>();
-        foreach (var kv in fallback.GetOrDefault<UScriptMap>(nameof(EventLanguageMap)).Properties)
-        {
-            EventLanguageMap[kv.Key.GetValue<FWwiseLanguageCookedData>()] = kv.Value?.GetValue<FWwiseEventCookedData>();
-        }
-
+        EventLanguageMap = fallback.GetOrDefault<Dictionary<FWwiseLanguageCookedData, FWwiseEventCookedData?>>(nameof(EventLanguageMap), []);
         DebugName = fallback.GetOrDefault<FName>(nameof(DebugName));
-        EventId = fallback.GetOrDefault<int>(nameof(EventId));
+        EventId = (uint)fallback.GetOrDefault<int>(nameof(EventId), comparisonType: StringComparison.OrdinalIgnoreCase);
     }
 
     public void SerializeBulkData(FAssetArchive Ar)

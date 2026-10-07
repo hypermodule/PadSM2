@@ -1,4 +1,5 @@
 using CUE4Parse.GameTypes.Borderlands4.Assets.Objects.Properties;
+using CUE4Parse.GameTypes.Borderlands4.Wwise;
 using CUE4Parse.UE4;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets.Objects.Unversioned;
@@ -41,7 +42,11 @@ public class FGbxInlineStruct: IUStruct
     {
         Type = Ar.ReadFString();
         if (string.IsNullOrEmpty(Type)) return;
-        Struct = new FStructFallback(Ar, Type.SubstringAfterLast('.'));
+
+        string typeName = Type.SubstringAfterLast('.');
+        Struct = new FStructFallback(Ar, typeName);
+
+        GbxAudioUtil.TryRegisterEvent(typeName, Struct);
     }
 }
 
@@ -159,7 +164,7 @@ public class FGbxParam : IUStruct
             EGbxType.Asset => new FSoftObjectPath(Ar),
             EGbxType.GbxDef => new FGbxDefPtr(Ar),
             EGbxType.WeightedAttributeInit => new FStructFallback(Ar, "GbxWeightedAttributeInit"), // only 1 entry
-            // EGbxType.FactAddress
+            EGbxType.FactAddress => new FSName(Ar),
             // EGbxType.DialogEnumValue
             EGbxType.AttributeEvaluator => new FStructFallback(Ar, "GbxAttributeEvaluator"),
             EGbxType.GameplayTag => new FGameplayTag(Ar),

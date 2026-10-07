@@ -5,11 +5,14 @@ using UAssetAPI.UnrealTypes;
 
 namespace UAssetAPI.PropertyTypes.Structs;
 
-public class MovieSceneTemplatePropertyData : StructPropertyData 
+public class MovieSceneTemplatePropertyData : StructPropertyData
 {
     public MovieSceneTemplatePropertyData(FName name, FName forcedType) : base(name, forcedType) { }
     public MovieSceneTemplatePropertyData(FName name) : base(name) { }
     public MovieSceneTemplatePropertyData() { }
+
+    private static readonly FString CurrentPropertyType = new FString("MovieSceneTemplate");
+    public override FString PropertyType => CurrentPropertyType;
 
     public override void Read(AssetBinaryReader reader, bool includeHeader, long leng1, long leng2 = 0, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
     {
@@ -21,7 +24,7 @@ public class MovieSceneTemplatePropertyData : StructPropertyData
         StrPropertyData type = new StrPropertyData(FName.DefineDummy(reader.Asset, "TypeName"));
         type.Ancestry.Initialize(Ancestry, Name);
         type.Read(reader, includeHeader, leng1);
-        
+
         if (type.Value != null)
         {
             StructType = FName.DefineDummy(reader.Asset, type.Value.ToString().Split(".")[1]);
@@ -64,7 +67,7 @@ public class MovieSceneTemplatePropertyData : StructPropertyData
 
 public class MovieSceneEvalTemplatePtrPropertyData : MovieSceneTemplatePropertyData
 {
-    public MovieSceneEvalTemplatePtrPropertyData(FName name, FName forcedType) : base(name, forcedType) {}
+    public MovieSceneEvalTemplatePtrPropertyData(FName name, FName forcedType) : base(name, forcedType) { }
     public MovieSceneEvalTemplatePtrPropertyData(FName name) : base(name) { }
     public MovieSceneEvalTemplatePtrPropertyData() { }
 

@@ -1,7 +1,7 @@
 ﻿# PadSM2 (Pad Static Mesh for Grounded 2)
 
-Small tool created to make a cooked UE5.6 static mesh asset compatible with the game Grounded 2
-(version 0.3.0.2 at least).
+Small tool created to make a cooked UE5.7 static mesh asset compatible with the game Grounded 2
+(version 0.6.0 at least).
 
 The tool performs the following operations on the static mesh asset:
 
@@ -15,8 +15,8 @@ The tool performs the following operations on the static mesh asset:
 
 ## Requirements
 
-PadSM2 requires you to have **.NET 8.0 or later installed**. If you don't already have it, you
-can [download it here](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/runtime)
+PadSM2 requires you to have **.NET 10.0 or later installed**. If you don't already have it, you
+can [download it here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/runtime)
 (select the **Windows Desktop x64** version).
 
 ## Usage
@@ -33,7 +33,7 @@ Follow these steps to replace the coin static mesh, which is located at:
 Augusta/Content/Art/World/ZN00_Global/Coins/Coin_Quarter/SM_Coin_Quarter_A.uasset
 ```
 
-1. Use Unreal Editor to create a blank UE5.6 project named `Augusta`.
+1. Use Unreal Editor to create a blank UE5.7 project named `Augusta`.
 
 2. In the content browser, create the directory structure of the target asset:
 
@@ -48,7 +48,7 @@ it `SM_Coin_Quarter_A`.
 materials, since the developers have also made engine changes to the material class. :-(
 This means that you should place each of the materials that are generated on import
 at the path of one of the game's built-in materials (e.g. I will place mine at
-`Augusta/Content/_Augusta/Editor/Materials/MI_PlaceholderGOAP`).
+`Augusta/Content/_Augusta/Editor/Materials/MI_PlaceholderRef`).
 
 5. Cook your mesh by going to clicking on Platforms > Windows > Cook Content.
 
@@ -77,7 +77,7 @@ PadSM2.exe C:\Users\user\Desktop\MyMod_P\Augusta\Content\Art\World\ZN00_Global\C
 
 ```
 cd C:\Users\user\Desktop
-retoc.exe to-zen MyMod_P MyMod_P.utoc --version UE5_6
+retoc.exe to-zen MyMod_P MyMod_P.utoc --version UE5_7
 ```
 
 This will produce `MyMod_P.{utoc,ucas,pak}`. Copy these 3 files to the game's Paks directory.

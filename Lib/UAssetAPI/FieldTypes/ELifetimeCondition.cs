@@ -1,11 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UAssetAPI.UnrealTypes;
-using UAssetAPI.ExportTypes;
-
 namespace UAssetAPI.FieldTypes
 {
     /// <summary>Secondary condition to check before considering the replication of a lifetime property.</summary>

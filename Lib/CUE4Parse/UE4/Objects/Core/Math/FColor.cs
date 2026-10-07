@@ -1,4 +1,3 @@
-using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -66,5 +65,7 @@ namespace CUE4Parse.UE4.Objects.Core.Math
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ToPackedARGB() => (A << 24) | (R << 16) | (G << 8) | (B << 0);
+
+        public static implicit operator Vector3(FColor color) => new(color.R / 255f, color.G / 255f, color.B / 255f);
     }
 }

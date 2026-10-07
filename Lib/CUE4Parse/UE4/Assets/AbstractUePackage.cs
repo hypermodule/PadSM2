@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports;
@@ -10,13 +8,13 @@ using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Exceptions;
 using CUE4Parse.UE4.Objects.UObject;
 using Newtonsoft.Json;
-using Serilog;
 
 namespace CUE4Parse.UE4.Assets;
 
 [JsonConverter(typeof(PackageConverter))]
 public abstract class AbstractUePackage : UObject, IPackage
 {
+
     public IFileProvider? Provider { get; }
     public TypeMappings? Mappings => Provider?.MappingsForGame;
 
@@ -32,7 +30,7 @@ public abstract class AbstractUePackage : UObject, IPackage
         get
         {
             if (HasFlags(EPackageFlags.PKG_UnversionedProperties) && Mappings is null)
-                throw new ParserException("Package has unversioned properties but mapping file is missing, can't serialize");
+                throw new MappingException("Package has unversioned properties but mapping file is missing, can't serialize");
             return true;
         }
     }
@@ -44,11 +42,15 @@ public abstract class AbstractUePackage : UObject, IPackage
         Flags |= EObjectFlags.RF_WasLoaded;
     }
 
-    public UObject ConstructObject(UStruct? struc, IPackage? owner = null, EObjectFlags flags = EObjectFlags.RF_NoFlags)
+    /// <summary>
+    /// TODO: make this protected and use <see cref="LoadableObjectExtensions.IsA{T}"/> to type check instead
+    /// </summary>
+    public UObject ConstructObject(ResolvedObject? struc, IPackage? owner = null, EObjectFlags flags = EObjectFlags.RF_NoFlags)
     {
         UObject? obj = null;
         var mappings = owner?.Mappings;
-        var current = struc;
+        var current = struc?.Object?.Value as UStruct;
+
         while (current != null) // Traverse up until a known one is found
         {
             if (current is UClass scriptClass)
@@ -66,7 +68,7 @@ public abstract class AbstractUePackage : UObject, IPackage
             {
                 // added guard for infinite loop
                 if (string.IsNullOrEmpty(structMappings.SuperType) || previous.Name == structMappings.SuperType) break;
-                current = new UScriptClass(structMappings.SuperType) ;
+                current = new UScriptClass(structMappings.SuperType);
             }
         }
 
@@ -83,6 +85,7 @@ public abstract class AbstractUePackage : UObject, IPackage
         var validPos = serialOffset + serialSize;
         try
         {
+            if (serialSize == 0) return; // Empty Export
             obj.Deserialize(Ar, validPos);
 #if DEBUG
             var remaining = validPos - Ar.Position;
@@ -96,7 +99,6 @@ public abstract class AbstractUePackage : UObject, IPackage
                     Log.Warning("Did not read {0} correctly, {1} bytes exceeded", obj.ExportType, Math.Abs(remaining));
                     break;
                 default:
-                    Log.Debug("Successfully read {0} at {1} with size {2}", obj.ExportType, serialOffset, serialSize);
                     break;
             }
 #endif
@@ -105,9 +107,9 @@ public abstract class AbstractUePackage : UObject, IPackage
         {
             if (Globals.FatalObjectSerializationErrors)
             {
-                throw new ParserException($"Could not read {obj.ExportType} correctly", e);
+                throw new ParserException($"Could not read {obj.ExportType} named {obj.Name} correctly", e);
             }
-            Log.Error(e, "Could not read {0} correctly", obj.ExportType);
+            Log.Error(e, "Could not read {0} named {1} correctly", obj.ExportType, obj.Name);
         }
     }
 
@@ -125,17 +127,11 @@ public abstract class AbstractUePackage : UObject, IPackage
 }
 
 [JsonConverter(typeof(ResolvedObjectConverter))]
-public abstract class ResolvedObject : IObject
+public abstract class ResolvedObject(IPackage package, int exportIndex = -1) : ILoadableObject
 {
-    public readonly IPackage Package;
+    public readonly IPackage Package = package;
 
-    public ResolvedObject(IPackage package, int exportIndex = -1)
-    {
-        Package = package;
-        ExportIndex = exportIndex;
-    }
-
-    public int ExportIndex { get; }
+    public int ExportIndex { get; } = exportIndex;
     public abstract FName Name { get; }
     public virtual ResolvedObject? Outer => null;
     public virtual ResolvedObject? Class => null;
@@ -143,6 +139,29 @@ public abstract class ResolvedObject : IObject
     public virtual Lazy<UObject>? Object => ExportIndex >= 0 && ExportIndex < Package.ExportsLazy.Length
         ? Package.ExportsLazy[ExportIndex]
         : null;
+
+    // same walk as ConstructObject (class, supers, then mappings)
+    public Type? GetObjectType()
+    {
+        var cls = Class;
+        var name = cls?.Name.Text;
+        while (!string.IsNullOrEmpty(name))
+        {
+            if (ObjectTypeRegistry.Get(name) is { } type) return type;
+
+            cls = cls?.Super;
+            if (cls != null)
+            {
+                name = cls.Name.Text;
+                continue;
+            }
+
+            if (Package.Mappings?.Types.TryGetValue(name, out var struc) != true || struc.SuperType == name) break;
+            name = struc.SuperType;
+        }
+
+        return Class != null ? typeof(UObject) : null;
+    }
 
     public string GetFullName(bool includeOuterMostName = true, bool includeClassPackage = false)
     {
@@ -183,39 +202,37 @@ public abstract class ResolvedObject : IObject
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T? Load<T>() where T : UObject => Object?.Value as T;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public UObject? Load() => Object?.Value;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryLoad(out UObject export)
+    public bool TryLoad([MaybeNullWhen(false)] out UObject export)
     {
         try
         {
             export = Object?.Value;
-            return export != null;
         }
-        catch
+        catch (Exception e)
         {
-            export = default;
-            return false;
+            Log.Error(e, "Could not load {0} named {1} correctly", Class?.Name, Name);
+            export = null;
         }
+        return export != null;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public async Task<UObject?> LoadAsync() => await Task.FromResult(Object?.Value);
+    public Task<UObject?> LoadAsync() => Task.FromResult(Object?.Value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public async Task<UObject?> TryLoadAsync()
+    public Task<UObject?> TryLoadAsync()
     {
         try
         {
-            return await Task.FromResult(Object?.Value);
+            return Task.FromResult(Object?.Value);
         }
-        catch
+        catch (Exception e)
         {
-            return await Task.FromResult<UObject?>(null);
+            Log.Error(e, "Could not load {0} named {1} correctly", Class?.Name, Name);
+            return Task.FromResult<UObject?>(null);
         }
     }
 
@@ -235,32 +252,17 @@ public abstract class ResolvedObject : IObject
     public override string ToString() => GetFullName();
 }
 
-public class ResolvedLoadedObject : ResolvedObject
+public class ResolvedLoadedObject(UObject uobject) : ResolvedObject(uobject.Owner)
 {
-    private readonly UObject _object;
+    public override FName Name => new(uobject.Name);
+    public override ResolvedObject? Outer => uobject.Outer;
+    public override ResolvedObject? Class => uobject.Class;
+    public override ResolvedObject? Super => uobject.Super;
+    public override Lazy<UObject> Object => new(() => uobject);
+}
 
-    public ResolvedLoadedObject(UObject obj) : base(obj.Owner)
-    {
-        _object = obj;
-    }
-
-    public override FName Name => new(_object.Name);
-    public override ResolvedObject? Outer
-    {
-        get
-        {
-            var obj = _object.Outer;
-            return obj != null ? new ResolvedLoadedObject(obj) : null;
-        }
-    }
-    public override ResolvedObject? Class
-    {
-        get
-        {
-            var obj = _object.Class;
-            return obj != null ? new ResolvedLoadedObject(obj) : null;
-        }
-    }
-    public override ResolvedObject? Super => null; //new ResolvedLoadedObject(_object.Super);
-    public override Lazy<UObject> Object => new(() => _object);
+public class ResolvedPackageObject(IPackage package) : ResolvedObject(package)
+{
+    public override FName Name => new(Package.Name);
+    public override Lazy<UObject> Object => new(() => (AbstractUePackage) Package);
 }

@@ -5,7 +5,8 @@ using UAssetAPI.UnrealTypes;
 
 namespace UAssetAPI.PropertyTypes.Structs;
 
-public enum ESectionEvaluationFlags : byte {
+public enum ESectionEvaluationFlags : byte
+{
     None = 0,
     PreRoll = 1,
     PostRoll = 2,
@@ -75,7 +76,7 @@ public struct FMovieSceneSubSectionData
         if (reader != null)
         {
             Section = new FPackageIndex(reader);
-            ObjectBindingId = new Guid(reader.ReadBytes(16));
+            ObjectBindingId = reader.ReadGuid();
             Flags = (ESectionEvaluationFlags)reader.ReadByte();
         }
     }
@@ -83,7 +84,7 @@ public struct FMovieSceneSubSectionData
     public int Write(AssetBinaryWriter writer)
     {
         Section.Write(writer);
-        writer.Write(ObjectBindingId.ToByteArray());
+        writer.Write(ObjectBindingId);
         writer.Write((byte)Flags);
         return sizeof(int) + 16 + sizeof(byte);
     }
@@ -237,7 +238,7 @@ public struct FSectionEvaluationDataTree
 
 public struct FMovieSceneTrackFieldData(AssetBinaryReader reader)
 {
-    public TMovieSceneEvaluationTree<uint> Field = new (reader, reader.ReadUInt32);
+    public TMovieSceneEvaluationTree<uint> Field = new(reader, reader.ReadUInt32);
 
     public int Write(AssetBinaryWriter writer)
     {

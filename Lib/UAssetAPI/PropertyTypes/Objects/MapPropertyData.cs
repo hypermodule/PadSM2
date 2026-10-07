@@ -148,6 +148,7 @@ public class MapPropertyData : PropertyData
         }
 
         int numKeysToRemove = reader.ReadInt32();
+        if (numKeysToRemove > MainSerializer.MaxSerializedArrayLength) throw new FormatException($"KeysToRemove length ({numKeysToRemove}) exceeds max length ({MainSerializer.MaxSerializedArrayLength})");
         KeysToRemove = new PropertyData[numKeysToRemove];
         for (int i = 0; i < numKeysToRemove; i++)
         {
@@ -155,6 +156,7 @@ public class MapPropertyData : PropertyData
         }
 
         int numEntries = reader.ReadInt32();
+        if (numEntries > MainSerializer.MaxSerializedArrayLength) throw new FormatException($"Value length ({numEntries}) exceeds max length ({MainSerializer.MaxSerializedArrayLength})");
         if (numEntries == 0)
         {
             KeyType = type1;
@@ -180,11 +182,12 @@ public class MapPropertyData : PropertyData
         base.ResolveAncestries(asset, ancestrySoFar);
     }
 
-    private void WriteRawMap(AssetBinaryWriter writer, TMap<PropertyData, PropertyData> map)
+    private void WriteRawMap(AssetBinaryWriter writer, TMap<PropertyData, PropertyData> map, PropertySerializationContext serializationContext)
     {
         if (map == null) return;
         foreach (var entry in map)
         {
+            if (serializationContext == PropertySerializationContext.CanBeZero && ((CanBeZeroStream)writer.BaseStream).HasWrittenNonZero) break;
             entry.Key.Offset = writer.BaseStream.Position;
             entry.Key.Write(writer, false, PropertySerializationContext.Map);
             entry.Value.Offset = writer.BaseStream.Position;
@@ -225,7 +228,7 @@ public class MapPropertyData : PropertyData
         }
 
         writer.Write(Value?.Count ?? 0);
-        WriteRawMap(writer, Value);
+        WriteRawMap(writer, Value, serializationContext);
         return (int)writer.BaseStream.Position - here;
     }
 

@@ -1,11 +1,9 @@
-using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using CUE4Parse.UE4.Readers;
-using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Writers;
 using CUE4Parse.Utils;
 using FixedMathSharp;
@@ -226,14 +224,14 @@ namespace CUE4Parse.UE4.Objects.Core.Math
             }
         }
 
-        public FQuat GetNormalized(float tolerance = UnrealMath.SmallNumber)
+        public readonly FQuat GetNormalized(float tolerance = UnrealMath.SmallNumber)
         {
             var result = this;
             result.Normalize(tolerance);
             return result;
         }
 
-        public bool IsNormalized => Abs(1f - SizeSquared) < THRESH_QUAT_NORMALIZED;
+        public readonly bool IsNormalized => Abs(1f - SizeSquared) < THRESH_QUAT_NORMALIZED;
 
         public float Size => Sqrt(SizeSquared);
 
@@ -260,7 +258,7 @@ namespace CUE4Parse.UE4.Objects.Core.Math
             return v + (W * t) + FVector.CrossProduct(q, t);
         }
 
-        public FQuat Inverse() => IsNormalized ? new FQuat(-X, -Y, -Z, W) : GetNormalized().Inverse();
+        public readonly FQuat Inverse() => IsNormalized ? new FQuat(-X, -Y, -Z, W) : GetNormalized().Inverse();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Conjugate() // public FQuat Inverse()
@@ -349,7 +347,7 @@ namespace CUE4Parse.UE4.Objects.Core.Math
 
         public override string ToString() => $"X={X:F3} Y={Y:F3} Z={Z:F3} W={W:F3}";
 
-        public void Serialize(FArchiveWriter Ar)
+        public readonly void Serialize(FArchiveWriter Ar)
         {
             Ar.Write(X);
             Ar.Write(Y);

@@ -14,7 +14,7 @@ public static class MeshConverter
         var usmapStream = Util.GetEmbeddedResource(path);
         var usmap = new Usmap();
         var usmapReader = new UsmapBinaryReader(usmapStream, usmap);
-        usmap.Read(usmapReader);
+        usmap.ReadUSMAP(usmapReader);
         return usmap;
     }
 
@@ -26,7 +26,7 @@ public static class MeshConverter
         assetStream.Position = 0;
         var assetReader = new AssetBinaryReader(assetStream);
 
-        return new UAsset(assetReader, EngineVersion.VER_UE5_6, usmap, useSeparateBulkDataFiles: true, customSerializationFlags: customSerializationFlags);
+        return new UAsset(assetReader, EngineVersion.VER_UE5_7, usmap, useSeparateBulkDataFiles: true, customSerializationFlags: customSerializationFlags);
     }
 
     private static StructPropertyData CreateResponseChannel(UAsset asset, int index, string channelValue, string responseValue)

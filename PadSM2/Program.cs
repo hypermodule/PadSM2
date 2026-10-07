@@ -7,7 +7,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        Console.WriteLine("PadSM2 v0.0.2");
+        Console.WriteLine("PadSM2 v0.0.3");
 
         if (args.Length != 1)
         {

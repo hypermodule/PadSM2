@@ -87,7 +87,8 @@ public class MovieSceneSubSequenceTreePropertyData : PropertyData<FMovieSceneSub
 
     public override int Write(AssetBinaryWriter writer, bool includeHeader, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
     {
-        if (includeHeader) {
+        if (includeHeader)
+        {
             this.WriteEndPropertyTag(writer);
         }
 
@@ -179,7 +180,8 @@ public class MovieSceneTrackFieldDataPropertyData : PropertyData<FMovieSceneTrac
 
     public override int Write(AssetBinaryWriter writer, bool includeHeader, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
     {
-        if (includeHeader) {
+        if (includeHeader)
+        {
             this.WriteEndPropertyTag(writer);
         }
 

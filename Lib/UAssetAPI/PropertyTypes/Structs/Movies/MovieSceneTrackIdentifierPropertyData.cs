@@ -93,7 +93,7 @@ public class MovieSceneEvaluationKeyPropertyData : PropertyData<FMovieSceneEvalu
         {
             this.WriteEndPropertyTag(writer);
         }
-        
+
         return Value.Write(writer);
     }
 }

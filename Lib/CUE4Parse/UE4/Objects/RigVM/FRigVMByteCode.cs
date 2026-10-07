@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Versions;
-using Serilog;
 
 namespace CUE4Parse.UE4.Objects.RigVM;
 
@@ -14,6 +11,7 @@ public class FRigVMByteCode
     public List<IRigInstruction> Instructions = [];
     public string[] Entries = [];
     public FRigVMBranchInfo[] BranchInfos = [];
+    public FRigVMCallableInfo[] CallableInfos = [];
     public FTopLevelAssetPath? PublicContextAssetPath;
     public bool bHasPublicContextPathName = false;
 
@@ -33,7 +31,7 @@ public class FRigVMByteCode
             }
             catch (Exception e)
             {
-                Log.Warning(e, $"Failed to serialize RigVM bytecode");
+                Log.Warning(e, "Failed to serialize RigVM bytecode");
             }
 
             return;
@@ -54,6 +52,11 @@ public class FRigVMByteCode
         if (FUE5MainStreamObjectVersion.Get(Ar) >= FUE5MainStreamObjectVersion.Type.RigVMLazyEvaluation)
         {
             BranchInfos = Ar.ReadArray(() => new FRigVMBranchInfo(Ar));
+        }
+
+        if (FRigVMObjectVersion.Get(Ar) >= FRigVMObjectVersion.Type.RigVMCallables)
+        {
+            CallableInfos = Ar.ReadArray(() => new FRigVMCallableInfo(Ar));
         }
 
         if (FRigVMObjectVersion.Get(Ar) >= FRigVMObjectVersion.Type.VMBytecodeStorePublicContextPathAsTopLevelAssetPath)
@@ -91,10 +94,30 @@ public class FRigVMByteCode
             ERigVMOpCode.InvokeEntry => new FRigVMInvokeEntryOp(Ar),
             ERigVMOpCode.JumpToBranch => Ar.Read<FRigVMJumpToBranchOp>(),
             ERigVMOpCode.RunInstructions => Ar.Read<FRigVMRunInstructionsOp>(),
+            ERigVMOpCode.InvokeCallable => new FRigVMInvokeCallableOp(Ar),
             _ => new FRigVMBaseOp(opCode),
         };
         return op;
     }
+}
+
+public class FRigVMCallableArgument(FArchive Ar)
+{
+    public FName Name = Ar.ReadFName();
+    public string TypeString = Ar.ReadFString();
+    public FRigVMOperand InterfaceOperand = Ar.Read<FRigVMOperand>();
+    public FRigVMOperand ForwardedOperand = Ar.Read<FRigVMOperand>();
+    public ERigVMPinDirection Direction = Ar.Read<ERigVMPinDirection>();
+}
+
+public class FRigVMCallableInfo(FArchive Ar)
+{
+    public int Index = Ar.Read<int>();
+    public FName Name = Ar.ReadFName();
+    public uint FunctionHash = Ar.Read<uint>();
+    public FRigVMCallableArgument[] Arguments = Ar.ReadArray(() => new FRigVMCallableArgument(Ar));
+    public int FirstInstruction = Ar.Read<int>();
+    public int LastInstruction = Ar.Read<int>();
 }
 
 public readonly struct FRigVMBranchInfo
@@ -256,7 +279,7 @@ public readonly struct FRigVMCopyOp : IRigInstruction
         Source = Ar.Read<FRigVMOperand>();
         Target = Ar.Read<FRigVMOperand>();
 
-        if (FUE5MainStreamObjectVersion.Get(Ar) < FUE5MainStreamObjectVersion.Type.RigVMCopyOpStoreNumBytes)
+        if (FUE5MainStreamObjectVersion.Get(Ar) < FUE5MainStreamObjectVersion.Type.RigVMCopyOpStoreNumBytes && Ar.Game != GAME_HonorofKingsWorld)
         {
             NumBytes = 0;
             RegisterType = ERigVMRegisterType.Invalid;
@@ -325,4 +348,29 @@ public readonly struct FRigVMRunInstructionsOp : IRigInstruction
     public readonly FRigVMOperand Arg;
     public readonly int StartInstruction;
     public readonly int EndInstruction;
+}
+
+struct FRigVMInvokeCallableOp : IRigInstruction
+{
+    public readonly ERigVMOpCode OpCode;
+    public readonly ushort CallableIndex;
+    public readonly ushort ArgumentCount;
+    public readonly FRigVMOperand[] Arguments;
+
+    public FRigVMInvokeCallableOp(FArchive Ar)
+    {
+        OpCode = Ar.Read<ERigVMOpCode>();
+        CallableIndex = Ar.Read<ushort>();
+        // backwards compatibility for old opcodes
+        if(OpCode <= ERigVMOpCode.Execute_64_Operands)
+        {
+            ArgumentCount = (ushort) OpCode;
+            OpCode = ERigVMOpCode.Execute;
+        }
+        else
+        {
+            ArgumentCount = Ar.Read<ushort>();
+        }
+        Arguments = Ar.ReadArray<FRigVMOperand>(ArgumentCount);
+    }
 }

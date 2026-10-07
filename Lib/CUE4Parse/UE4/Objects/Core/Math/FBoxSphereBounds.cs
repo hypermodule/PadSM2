@@ -1,7 +1,8 @@
 ﻿using System.Numerics;
 using System.Runtime.CompilerServices;
+using CUE4Parse.UE4.Assets.Objects;
+using CUE4Parse.UE4.Assets.Utils;
 using CUE4Parse.UE4.Readers;
-using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
 using static System.MathF;
 
@@ -10,6 +11,7 @@ namespace CUE4Parse.UE4.Objects.Core.Math
     /// <summary>
     /// Structure for a combined axis aligned bounding box and bounding sphere with the same origin. (28 bytes).
     /// </summary>
+    [StructFallback]
     public class FBoxSphereBounds
     {
         /** Holds the origin of the bounding box and sphere. */
@@ -54,6 +56,13 @@ namespace CUE4Parse.UE4.Objects.Core.Math
             SphereRadius = sphere.W;
         }
 
+        public FBoxSphereBounds(FStructFallback fallback)
+        {
+            Origin = fallback.GetOrDefault<FVector>(nameof(Origin));
+            BoxExtent = fallback.GetOrDefault<FVector>(nameof(BoxExtent));
+            SphereRadius = (float) fallback.GetOrDefault<double>(nameof(SphereRadius));
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public FBox GetBox() => new(Origin - BoxExtent, Origin + BoxExtent);
 
@@ -94,6 +103,8 @@ namespace CUE4Parse.UE4.Objects.Core.Math
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public FBoxSphereBounds TransformBy(FTransform m) => TransformBy(m.ToMatrixWithScale());
+
+        public static FBoxSphereBounds operator *(FBoxSphereBounds a, float scale) => new(a.Origin * scale, a.BoxExtent * scale, a.SphereRadius * scale);
 
         public override string ToString() => $"Origin=({Origin}), BoxExtent=({BoxExtent}), SphereRadius={SphereRadius}";
     }

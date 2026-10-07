@@ -8,7 +8,7 @@ namespace UAssetAPI.Kismet.Bytecode.Expressions
     /// A single Kismet bytecode instruction, corresponding to the <see cref="EExprToken.EX_LocalOutVariable"/> instruction.
     /// </summary>
     public class EX_LocalOutVariable : EX_VariableBase
-	{
+    {
         /// <summary>
         /// The token of this expression.
         /// </summary>
