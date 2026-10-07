@@ -1,4 +1,6 @@
+using Newtonsoft.Json;
 using System;
+using UAssetAPI.JSON;
 using UAssetAPI.PropertyTypes.Objects;
 using UAssetAPI.UnrealTypes;
 
@@ -7,9 +9,11 @@ namespace UAssetAPI.PropertyTypes.Structs;
 public class MovieSceneGenerationLedgerPropertyData : PropertyData
 {
     /** Map of track identifiers to number of references within th template (generally 1, maybe >1 for shared tracks) */
+    [JsonConverter(typeof(TMapJsonConverter<StructPropertyData, int>))]
     TMap<StructPropertyData, int> TrackReferenceCounts;
 
     /** Map of track signature to array of track identifiers that it created */
+    [JsonConverter(typeof(TMapJsonConverter<Guid, StructPropertyData>))]
     TMap<Guid, StructPropertyData> TrackSignatureToTrackIdentifier;
 
     public MovieSceneGenerationLedgerPropertyData(FName name) : base(name) { }
@@ -40,7 +44,7 @@ public class MovieSceneGenerationLedgerPropertyData : PropertyData
         TrackSignatureToTrackIdentifier = new TMap<Guid, StructPropertyData>();
         for (int i = 0; i < SignatureToTrackIDs; i++)
         {
-            var guid = new Guid(reader.ReadBytes(16));
+            var guid = reader.ReadGuid();
             var counts = reader.ReadInt32();
             if (counts != 1) throw new FormatException("Invalid TrackSignatureToTrackIdentifier count");
             var identifier = new StructPropertyData(FName.DefineDummy(reader.Asset, "MovieSceneTrackIdentifier"), FName.DefineDummy(reader.Asset, "Generic"));
@@ -69,7 +73,7 @@ public class MovieSceneGenerationLedgerPropertyData : PropertyData
         writer.Write(TrackSignatureToTrackIdentifier.Count);
         foreach (var kvp in TrackSignatureToTrackIdentifier)
         {
-            writer.Write(kvp.Key.ToByteArray());
+            writer.Write(kvp.Key);
             writer.Write(1);
             kvp.Value.Write(writer, false, PropertySerializationContext.StructFallback);
         }

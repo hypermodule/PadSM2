@@ -9,6 +9,14 @@ using UAssetAPI.Unversioned;
 
 namespace UAssetAPI;
 
+public enum ECustomVersionSerializationFormat
+{
+    Unknown,
+    Guids,
+    Enums,
+    Optimized
+}
+
 /// <summary>
 /// Any binary reader used in the parsing of Unreal file types.
 /// </summary>
@@ -62,6 +70,12 @@ public class UnrealBinaryReader : BinaryReader
         return BitConverter.ToDouble(ReverseIfBigEndian(base.ReadBytes(8)), 0);
     }
 
+    [Obsolete("Deprecated due to potential confusion with ReadBooleanInt, use ReadBooleanByte instead for identical behavior")]
+    public new bool ReadBoolean()
+    {
+        return ReadBooleanByte();
+    }
+
     public bool ReadBooleanInt()
     {
         var i = ReadInt32();
@@ -73,6 +87,22 @@ public class UnrealBinaryReader : BinaryReader
         };
     }
 
+    public bool ReadBooleanByte()
+    {
+        var i = ReadByte();
+        return i switch
+        {
+            1 => true,
+            0 => false,
+            _ => throw new FormatException($"Invalid boolean value {i}")
+        };
+    }
+
+    public Guid ReadGuid()
+    {
+        return new Guid(ReadBytes(16));
+    }
+
     public override string ReadString()
     {
         return ReadFString()?.Value;
@@ -81,16 +111,17 @@ public class UnrealBinaryReader : BinaryReader
     public virtual FString ReadFString()
     {
         int length = this.ReadInt32();
+        if (length > MainSerializer.MaxSerializedArrayLength) throw new InvalidOperationException($"Invalid FString length: {length}"); // some parsing error is obviously occurring if we have extremely large strings
         switch (length)
         {
             case < 0:
                 var len = -length * 2;
                 Span<byte> data = len < 512 ? stackalloc byte[len] : new byte[len];
-                BaseStream.Read(data);
+                BaseStream.ReadExactly(data);
                 return new FString(Encoding.Unicode.GetString(data[..^2]), Encoding.Unicode);
             case > 0:
                 data = length < 512 ? stackalloc byte[length] : new byte[length];
-                BaseStream.Read(data);
+                BaseStream.ReadExactly(data);
                 return new FString(Encoding.UTF8.GetString(data[..^1]), Encoding.UTF8);
             default:
                 return null;
@@ -100,13 +131,14 @@ public class UnrealBinaryReader : BinaryReader
     public virtual FString ReadUtf8String()
     {
         int length = this.ReadInt32();
+        if (length > MainSerializer.MaxSerializedArrayLength) throw new InvalidOperationException($"Invalid UTF-8 string length: {length}");
         switch (length)
         {
             case < 0:
-                throw new FormatException("Invalid UTF-8 string length");
+                throw new FormatException($"Invalid UTF-8 string length: {length}");
             case > 0:
                 Span<byte> data = length < 512 ? stackalloc byte[length] : new byte[length];
-                BaseStream.Read(data);
+                BaseStream.ReadExactly(data);
                 return new FString(Encoding.UTF8.GetString(data), Encoding.UTF8);
             default:
                 return null;
@@ -149,7 +181,7 @@ public class UnrealBinaryReader : BinaryReader
                 int numCustomVersions = ReadInt32();
                 for (int i = 0; i < numCustomVersions; i++)
                 {
-                    var customVersionID = new Guid(ReadBytes(16));
+                    var customVersionID = ReadGuid();
                     var customVersionNumber = ReadInt32();
                     newCustomVersionContainer.Add(new CustomVersion(customVersionID, customVersionNumber) { Name = ReadFString() });
                     existingCustomVersions.Add(customVersionID);
@@ -159,14 +191,14 @@ public class UnrealBinaryReader : BinaryReader
                 numCustomVersions = ReadInt32();
                 for (int i = 0; i < numCustomVersions; i++)
                 {
-                    var customVersionID = new Guid(ReadBytes(16));
+                    var customVersionID = ReadGuid();
                     var customVersionNumber = ReadInt32();
-                    newCustomVersionContainer.Add(new CustomVersion(customVersionID, customVersionNumber));                      
+                    newCustomVersionContainer.Add(new CustomVersion(customVersionID, customVersionNumber));
                     existingCustomVersions.Add(customVersionID);
                 }
                 break;
 
-        }    
+        }
 
         if (Mappings != null && Mappings.CustomVersionContainer != null && Mappings.CustomVersionContainer.Count > 0)
         {
@@ -200,7 +232,7 @@ public class AssetBinaryReader : UnrealBinaryReader
     {
         Asset = asset;
     }
-    
+
     public AssetBinaryReader(Stream stream, bool inLoadUexp, UAsset asset = null) : base(stream)
     {
         Asset = asset;
@@ -212,8 +244,8 @@ public class AssetBinaryReader : UnrealBinaryReader
         if (Asset.HasUnversionedProperties) return null;
         if (Asset.ObjectVersion >= ObjectVersion.VER_UE4_PROPERTY_GUID_IN_PROPERTY_TAG)
         {
-            bool hasPropertyGuid = ReadBoolean();
-            if (hasPropertyGuid) return new Guid(ReadBytes(16));
+            bool hasPropertyGuid = ReadBooleanByte();
+            if (hasPropertyGuid) return ReadGuid();
         }
         return null;
     }
@@ -225,16 +257,33 @@ public class AssetBinaryReader : UnrealBinaryReader
         return new FName(Asset, nameMapPointer, number);
     }
 
-    public T[] ReadArray<T>(Func<T> readElement)
+    public T[] ReadArray<T>(int length, Func<T> readElement)
     {
-        int arrayLength = ReadInt32();
-        if (arrayLength == 0) return [];
-        T[] newData = new T[arrayLength];
-        for (int i = 0; i < arrayLength; i++)
+        if (length == 0) return [];
+        if (length > MainSerializer.MaxSerializedArrayLength) throw new FormatException($"Invalid array length: {length}");
+        T[] newData = new T[length];
+        for (int i = 0; i < length; i++)
         {
             newData[i] = readElement();
         }
         return newData;
+    }
+
+    public T[] ReadArray<T>(Func<T> readElement)
+    {
+        int arrayLength = ReadInt32();
+        return ReadArray(arrayLength, readElement);
+    }
+
+    public TMap<TKey, TValue> ReadMap<TKey, TValue>(int length, Func<TKey> keyGetter, Func<TValue> valueGetter) where TKey : notnull
+    {
+        return new TMap<TKey, TValue>(ReadArray<KeyValuePair<TKey, TValue>>(length, () => new(keyGetter(), valueGetter())));
+    }
+
+    public TMap<TKey, TValue> ReadMap<TKey, TValue>(Func<TKey> keyGetter, Func<TValue> valueGetter) where TKey : notnull
+    {
+        var length = ReadInt32();
+        return ReadMap(length, keyGetter, valueGetter);
     }
 
     public FObjectThumbnail ReadObjectThumbnail()
@@ -260,6 +309,15 @@ public class AssetBinaryReader : UnrealBinaryReader
         return locMetadataObject;
     }
 
+    /*
+    !!!!!
+
+    THE FOLLOWING METHODS ARE INTENDED ONLY TO BE USED IN PARSING KISMET BYTECODE; PLEASE DO NOT USE THEM FOR ANY OTHER PURPOSE!
+
+    !!!!!
+    */
+
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public string XFERSTRING()
     {
         List<byte> readData = new List<byte>();
@@ -269,9 +327,10 @@ public class AssetBinaryReader : UnrealBinaryReader
             if (newVal == 0) break;
             readData.Add(newVal);
         }
-        return Encoding.ASCII.GetString(readData.ToArray());
+        return Encoding.UTF8.GetString(readData.ToArray());
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public string XFERUNICODESTRING()
     {
         List<byte> readData = new List<byte>();
@@ -286,31 +345,37 @@ public class AssetBinaryReader : UnrealBinaryReader
         return Encoding.Unicode.GetString(readData.ToArray());
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public void XFERTEXT()
     {
 
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public FName XFERNAME()
     {
         return this.ReadFName();
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public FName XFER_FUNC_NAME()
     {
         return this.XFERNAME();
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public FPackageIndex XFERPTR()
     {
         return new FPackageIndex(this.ReadInt32());
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public FPackageIndex XFER_FUNC_POINTER()
     {
         return this.XFERPTR();
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public KismetPropertyPointer XFER_PROP_POINTER()
     {
         if (Asset.GetCustomVersion<FReleaseObjectVersion>() >= FReleaseObjectVersion.FFieldPathOwnerSerialization)
@@ -330,6 +395,7 @@ public class AssetBinaryReader : UnrealBinaryReader
         }
     }
 
+    /// <summary>This method is intended only to be used in parsing Kismet bytecode; please do not use it for any other purpose!</summary>
     public FPackageIndex XFER_OBJECT_POINTER()
     {
         return this.XFERPTR();

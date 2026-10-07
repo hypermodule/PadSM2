@@ -8,7 +8,7 @@ namespace UAssetAPI.Kismet.Bytecode.Expressions
     /// A single Kismet bytecode instruction, corresponding to the <see cref="EExprToken.EX_MetaCast"/> instruction.
     /// </summary>
     public class EX_MetaCast : EX_CastBase
-	{
+    {
         /// <summary>
         /// The token of this expression.
         /// </summary>

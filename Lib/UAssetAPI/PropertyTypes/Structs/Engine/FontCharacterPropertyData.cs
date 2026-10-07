@@ -25,7 +25,8 @@ public class FontCharacterPropertyData : PropertyData<FFontCharacter>
 
     public override int Write(AssetBinaryWriter writer, bool includeHeader, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
     {
-        if (includeHeader) {
+        if (includeHeader)
+        {
             this.WriteEndPropertyTag(writer);
         }
 

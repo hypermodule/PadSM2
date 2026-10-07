@@ -39,7 +39,7 @@ public class EnumPropertyData : PropertyData<FName>
             InnerType = reader.Asset.HasUnversionedProperties ? FName.DefineDummy(reader.Asset, enumDat1.InnerType.Type.ToString()) : new FName(reader.Asset, enumDat1.Name);
         }
 
-        if (reader.Asset.HasUnversionedProperties && serializationContext == PropertySerializationContext.Normal)
+        if (reader.Asset.HasUnversionedProperties && serializationContext.IsNormal())
         {
             Value = null;
             if (InnerType?.Value.Value == "ByteProperty" || InnerType?.Value.Value == "UInt16Property" || InnerType?.Value.Value == "UInt32Property")
@@ -75,7 +75,7 @@ public class EnumPropertyData : PropertyData<FName>
                 return;
             }
 
-            if (InnerType?.Value.Value == "Int8Property" || InnerType?.Value.Value == "Int16Property" || 
+            if (InnerType?.Value.Value == "Int8Property" || InnerType?.Value.Value == "Int16Property" ||
                 InnerType?.Value.Value == "IntProperty" || InnerType?.Value.Value == "Int64Property")
             {
                 long enumIndice = 0;
@@ -135,7 +135,7 @@ public class EnumPropertyData : PropertyData<FName>
             InnerType = writer.Asset.HasUnversionedProperties ? FName.DefineDummy(writer.Asset, enumDat1.InnerType.Type.ToString()) : new FName(writer.Asset, enumDat1.Name);
         }
 
-        if (writer.Asset.HasUnversionedProperties && serializationContext == PropertySerializationContext.Normal)
+        if (writer.Asset.HasUnversionedProperties && serializationContext.IsNormal())
         {
             if (ValidEnumInnerTypeList.Contains(InnerType?.Value?.Value))
             {
@@ -197,7 +197,7 @@ public class EnumPropertyData : PropertyData<FName>
             {
                 writer.Write(EnumType);
             }
-            
+
             this.WriteEndPropertyTag(writer);
         }
         writer.Write(Value);
@@ -238,7 +238,7 @@ public class EnumPropertyData : PropertyData<FName>
         return Value.ToString();
     }
 
-    // note: Value must be overridden manually after this is called in cases where serializationContext != PropertySerializationContext.Normal, to ensure not dummy
+    // note: Value must be overridden manually after this is called in cases where !serializationContext.IsNormal(), to ensure not dummy
     public override void FromString(string[] d, UAsset asset)
     {
         if (d[0] != "null" && d[0] != null)

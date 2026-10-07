@@ -251,7 +251,7 @@ public static class PropertyTypeNameFixer
             case UsmapEnumData enumData:
                 var enumName = new FName(asset, enumData.Name);
                 return BuildNodeList("EnumProperty", 1, [CreateNode(enumName, 0)], asset);
-            case UsmapPropertyData propData when propData.Type == EPropertyType.ByteProperty:
+            case { Type: UsmapPropertyType.ByteProperty }:
                 var byteEnumName = new FName(asset, "None");
                 return BuildNodeList("ByteProperty", 1, [CreateNode(byteEnumName, 0)], asset);
             default:

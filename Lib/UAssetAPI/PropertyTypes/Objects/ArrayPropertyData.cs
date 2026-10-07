@@ -50,7 +50,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
             {
                 ArrayType = reader.ReadFName();
             }
-                
+
             this.ReadEndPropertyTag(reader);
         }
 
@@ -67,6 +67,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
         }
 
         int numEntries = reader.ReadInt32();
+        if (numEntries > MainSerializer.MaxSerializedArrayLength) throw new InvalidOperationException("Invalid number of entries (" + numEntries + ") for array " + Name.Value.Value + " in class " + Ancestry.Parent.Value.Value);
         if (ArrayType.Value.Value == "StructProperty" && ShouldSerializeStructsDifferently && !reader.Asset.HasUnversionedProperties)
         {
             var results = new PropertyData[numEntries];
@@ -106,7 +107,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
 
                 structLength = reader.ReadInt64(); // length value
                 fullType = reader.ReadFName();
-                structGUID = new Guid(reader.ReadBytes(16));
+                structGUID = reader.ReadGuid();
                 reader.ReadPropertyGuid();
             }
             else
@@ -232,7 +233,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
 
                 if (arrayStructType == null)
                 {
-                    throw new InvalidOperationException("Unable to reconstruct DummyStruct within empty StructProperty array " + Name.Value.Value + " in class " + Ancestry.Parent.Value.Value);
+                    throw new InvalidOperationException("DummyStruct is null within empty StructProperty array \"" + Name.Value.Value + "\" in class \"" + Ancestry.Parent.Value.Value + "\"");
                 }
 
                 DummyStruct = new StructPropertyData(this.Name, arrayStructType)
@@ -259,7 +260,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
                 lengthLoc = (int)writer.BaseStream.Position;
                 writer.Write((long)0);
                 writer.Write(fullType);
-                if (writer.Asset.ObjectVersion >= ObjectVersion.VER_UE4_STRUCT_GUID_IN_PROPERTY_TAG) writer.Write(DummyStruct.StructGUID.ToByteArray());
+                if (writer.Asset.ObjectVersion >= ObjectVersion.VER_UE4_STRUCT_GUID_IN_PROPERTY_TAG) writer.Write(DummyStruct.StructGUID);
                 if (writer.Asset.ObjectVersion >= ObjectVersion.VER_UE4_PROPERTY_GUID_IN_PROPERTY_TAG) writer.Write((byte)0);
             }
 
@@ -283,6 +284,7 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
         {
             for (int i = 0; i < Value.Length; i++)
             {
+                if (serializationContext == PropertySerializationContext.CanBeZero && ((CanBeZeroStream)writer.BaseStream).HasWrittenNonZero) return -1;
                 Value[i].Offset = writer.BaseStream.Position;
                 Value[i].Write(writer, false, PropertySerializationContext.Array);
             }
@@ -294,6 +296,13 @@ public class ArrayPropertyData : PropertyData<PropertyData[]>
     public override void FromString(string[] d, UAsset asset)
     {
         if (d[4] != null) ArrayType = FName.FromString(asset, d[4]);
+        if (!string.IsNullOrWhiteSpace(d[0]))
+        {
+            DummyStruct = d[0] == FString.NullCase ? null : new StructPropertyData(this.Name, FName.FromString(asset, d[0]))
+            {
+                StructGUID = DummyStruct?.StructGUID ?? Guid.Empty
+            };
+        }
     }
 
     protected override void HandleCloned(PropertyData res)

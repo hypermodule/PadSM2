@@ -14,7 +14,7 @@ public static class MeshConverter
         var usmapStream = Util.GetEmbeddedResource(path);
         var usmap = new Usmap();
         var usmapReader = new UsmapBinaryReader(usmapStream, usmap);
-        usmap.Read(usmapReader);
+        usmap.ReadUSMAP(usmapReader);
         return usmap;
     }
 

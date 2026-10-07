@@ -42,7 +42,8 @@ namespace UAssetAPI
 #if DEBUGVERBOSE
         private static PropertyData lastType;
 #endif
-        public static string[] AdditionalPropertyRegistry = ["ClassProperty", "SoftClassProperty", "AssetClassProperty"];
+        internal static readonly string[] AdditionalPropertyRegistry = ["ClassProperty", "SoftClassProperty", "AssetClassProperty"];
+        internal static readonly long MaxSerializedArrayLength = 1024 * 1024;
 
         private static IDictionary<string, RegistryEntry> _propertyTypeRegistry;
 
@@ -65,9 +66,25 @@ namespace UAssetAPI
             return AppDomain.CurrentDomain.GetAssemblies().Where(a => GetNamesOfAssembliesReferencedBy(a).Contains(analyzedAssembly.FullName));
         }
 
-        public static IEnumerable<string> GetNamesOfAssembliesReferencedBy(Assembly assembly)
+        private static IEnumerable<string> GetNamesOfAssembliesReferencedBy(Assembly assembly)
         {
             return assembly.GetReferencedAssemblies().Select(assemblyName => assemblyName.FullName);
+        }
+
+        internal static void InitializeCurrentCommit()
+        {
+            UAPUtils._commitAssigned = true;
+            UAPUtils._currentCommit = string.Empty;
+            using (Stream stream = registryParentDataType.Assembly.GetManifestResourceStream("UAssetAPI.git_commit.txt"))
+            {
+                if (stream != null)
+                {
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        if (reader != null) UAPUtils._currentCommit = reader.ReadToEnd().Trim();
+                    }
+                }
+            }
         }
 
         private static Type registryParentDataType = typeof(PropertyData);
@@ -114,20 +131,12 @@ namespace UAssetAPI
                            nameParam
                         ).Compile();
 
+                        // prevent duplicate entries
+                        if (_propertyTypeRegistry.ContainsKey(returnedPropType.Value))
+                        {
+                            throw new InvalidOperationException($"Different child classes of PropertyData with the same PropertyType field exist: {res.PropertyType.FullName} and {_propertyTypeRegistry[returnedPropType.Value].PropertyType.FullName}");
+                        }
                         _propertyTypeRegistry[returnedPropType.Value] = res;
-                    }
-                }
-            }
-
-            // Fetch the current git commit while we're here
-            UAPUtils.CurrentCommit = string.Empty;
-            using (Stream stream = registryParentDataType.Assembly.GetManifestResourceStream("UAssetAPI.git_commit.txt"))
-            {
-                if (stream != null)
-                {
-                    using (StreamReader reader = new StreamReader(stream))
-                    {
-                        if (reader != null) UAPUtils.CurrentCommit = reader.ReadToEnd().Trim();
                     }
                 }
             }
@@ -183,7 +192,7 @@ namespace UAssetAPI
                     {
                         if (zeroProps.Contains(lastNum))
                         {
-                            int valueNum = lastNum - firstNum + 1;
+                            int valueNum = lastNum - firstNum;
                             fragmentHasAnyZeros.Add(valueNum / FFragment.ValueMax);
                         }
                         sortedProps.Add(propMap[lastNum]);
@@ -226,7 +235,7 @@ namespace UAssetAPI
 
                 // i doubt that this is true, empirically tested; need more data
                 int numSkip = 0;
-                if (asset.ObjectVersionUE5 >= ObjectVersionUE5.ADD_SOFTOBJECTPATH_LIST)
+                if (asset.ObjectVersion >= ObjectVersion.VER_UE4_CORRECT_LICENSEE_FLAG)
                 {
                     numSkip = Math.Min(asset.Mappings.GetAllProperties(highestSchema, parentModulePath?.ToString(), asset).Count, FFragment.SkipMax);
                 }
@@ -360,6 +369,7 @@ namespace UAssetAPI
                     {
                         reader.BaseStream.Position = posBefore;
                         data = new RawStructPropertyData(name);
+                        data.PropertyTagFlags = propertyTagFlags;
                         data.Ancestry.Initialize(ancestry, parentName, parentModulePath);
                         data.ArrayIndex = ArrayIndex;
                         data.PropertyTypeName = propertyTypeName;
@@ -409,7 +419,11 @@ namespace UAssetAPI
                     throw new InvalidMappingsException();
                 }
 
-                UsmapSchema relevantSchema = reader.Asset.Mappings.GetSchemaFromName(parentName.Value.Value, reader.Asset, parentModulePath?.Value.Value);
+                UsmapSchema relevantSchema = reader.Asset.Mappings.GetSchemaFromName(parentName?.ToString(), reader.Asset, parentModulePath?.ToString());
+#if DEBUG || DEBUGVERBOSE || DEBUGTRACING
+                UsmapSchema originalSchemaForAnalysis = reader.Asset.Mappings.GetSchemaFromName(parentName?.ToString(), reader.Asset, parentModulePath?.ToString());
+#endif
+
                 while (header.UnversionedPropertyIndex > header.CurrentFragment.Value.LastNum)
                 {
                     if (header.CurrentFragment.Value.bIsLast) return null;
@@ -421,8 +435,21 @@ namespace UAssetAPI
                 while (practicingUnversionedPropertyIndex >= relevantSchema.PropCount) // if needed, go to parent struct
                 {
                     practicingUnversionedPropertyIndex -= relevantSchema.PropCount;
-                    relevantSchema = (relevantSchema.SuperType != null && reader.Asset.Mappings.Schemas.ContainsKey(relevantSchema.SuperType)) ? reader.Asset.Mappings.Schemas[relevantSchema.SuperType] : null;
-                    if (relevantSchema == null) throw new FormatException("Failed to find a valid property for schema index " + header.UnversionedPropertyIndex + " in the class " + parentName.Value.Value);
+
+                    if (relevantSchema.SuperType != null && relevantSchema.SuperTypeModulePath != null && reader.Asset.Mappings.Schemas.ContainsKey(relevantSchema.SuperTypeModulePath + "." + relevantSchema.SuperType))
+                    {
+                        relevantSchema = reader.Asset.Mappings.Schemas[relevantSchema.SuperTypeModulePath + "." + relevantSchema.SuperType];
+                    }
+                    else if (relevantSchema.SuperType != null && reader.Asset.Mappings.Schemas.ContainsKey(relevantSchema.SuperType) && relevantSchema.Name != relevantSchema.SuperType) // name is insufficient if name of super is same as name of child
+                    {
+                        relevantSchema = reader.Asset.Mappings.Schemas[relevantSchema.SuperType];
+                    }
+                    else
+                    {
+                        relevantSchema = null;
+                    }
+
+                    if (relevantSchema == null) throw new FormatException("Failed to find a valid property for schema index " + header.UnversionedPropertyIndex + " in the class " + parentName.ToString());
                 }
                 UsmapProperty relevantProperty = relevantSchema.Properties[practicingUnversionedPropertyIndex];
                 header.UnversionedPropertyIndex += 1;
@@ -597,6 +624,7 @@ namespace UAssetAPI
                 writer.Write((int)0); // initial length
                 writer.Write((byte)property.PropertyTagFlags);
                 if (property.ArrayIndex != 0) writer.Write(property.ArrayIndex);
+                if (property.PropertyGuid != null) writer.Write(property.PropertyGuid.Value);
                 int realLength = property.Write(writer, includeHeader);
                 int newLoc = (int)writer.BaseStream.Position;
 

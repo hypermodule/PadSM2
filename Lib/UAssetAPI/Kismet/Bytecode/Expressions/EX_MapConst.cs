@@ -77,6 +77,7 @@ namespace UAssetAPI.Kismet.Bytecode.Expressions
             {
                 element.Visit(asset, ref offset, visitor);
             }
+            offset += 1; // EX_EndMapConst
         }
     }
 }

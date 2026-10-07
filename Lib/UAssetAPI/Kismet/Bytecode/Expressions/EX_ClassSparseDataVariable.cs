@@ -8,7 +8,7 @@ namespace UAssetAPI.Kismet.Bytecode.Expressions
     /// A single Kismet bytecode instruction, corresponding to the <see cref="EExprToken.EX_ClassSparseDataVariable"/> instruction.
     /// </summary>
     public class EX_ClassSparseDataVariable : EX_VariableBase
-	{
+    {
         /// <summary>
         /// The token of this expression.
         /// </summary>

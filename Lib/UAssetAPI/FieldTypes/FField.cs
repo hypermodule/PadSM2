@@ -1,6 +1,7 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using UAssetAPI.JSON;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.Unversioned;
 
@@ -14,6 +15,7 @@ namespace UAssetAPI.FieldTypes
         public FName SerializedType;
         public FName Name;
         public EObjectFlags Flags;
+        [JsonConverter(typeof(TMapJsonConverter<FName, FString>))]
         public TMap<FName, FString> MetaDataMap;
 
         public virtual void Read(AssetBinaryReader reader)
@@ -26,14 +28,7 @@ namespace UAssetAPI.FieldTypes
                 bool bHasMetaData = reader.ReadBooleanInt();
                 if (bHasMetaData)
                 {
-                    MetaDataMap = new TMap<FName, FString>();
-                    int leng = reader.ReadInt32();
-                    for (int i = 0; i < leng; i++)
-                    {
-                        FName key = reader.ReadFName();
-                        FString val = reader.ReadFString();
-                        MetaDataMap.Add(key, val);
-                    }
+                    MetaDataMap = reader.ReadMap(reader.ReadFName, reader.ReadFString);
                 }
             }
         }
@@ -45,7 +40,7 @@ namespace UAssetAPI.FieldTypes
 
             if (!writer.Asset.IsFilterEditorOnly && !writer.Asset.PackageFlags.HasFlag(EPackageFlags.PKG_Cooked))
             {
-                writer.Write(MetaDataMap is not null ? 1 : 0); // int32
+                writer.WriteBooleanInt(MetaDataMap is not null); // int32
                 if (MetaDataMap is not null && MetaDataMap.Count > 0)
                 {
                     writer.Write(MetaDataMap.Count); // int32
@@ -56,7 +51,6 @@ namespace UAssetAPI.FieldTypes
                         writer.Write(pair.Value);
                     }
                 }
-
             }
         }
 
@@ -91,16 +85,16 @@ namespace UAssetAPI.FieldTypes
         }
 
         [JsonIgnore]
-        public IDictionary<string, EPropertyType> UsmapPropertyTypeOverrides = new Dictionary<string, EPropertyType>()
+        private readonly IDictionary<string, UsmapPropertyType> UsmapPropertyTypeOverrides = new Dictionary<string, UsmapPropertyType>()
         {
-            { "MulticastInlineDelegateProperty", EPropertyType.MulticastDelegateProperty },
-            { "ClassProperty", EPropertyType.ObjectProperty },
-            { "SoftClassProperty", EPropertyType.SoftObjectProperty }
+            { "MulticastInlineDelegateProperty", UsmapPropertyType.MulticastDelegateProperty },
+            { "ClassProperty", UsmapPropertyType.ObjectProperty },
+            { "SoftClassProperty", UsmapPropertyType.SoftObjectProperty }
         };
 
-        public EPropertyType GetUsmapPropertyType()
+        public UsmapPropertyType GetUsmapPropertyType()
         {
-            EPropertyType res = EPropertyType.Unknown;
+            UsmapPropertyType res = UsmapPropertyType.Unknown;
             if (UsmapPropertyTypeOverrides.TryGetValue(SerializedType.Value.Value, out res)) return res;
             if (Enum.TryParse(SerializedType.Value.Value, out res)) return res;
             return res;
@@ -345,8 +339,8 @@ namespace UAssetAPI.FieldTypes
             ByteOffset = reader.ReadByte();
             ByteMask = reader.ReadByte();
             FieldMask = reader.ReadByte();
-            NativeBool = reader.ReadBoolean();
-            Value = reader.ReadBoolean();
+            NativeBool = reader.ReadBooleanByte();
+            Value = reader.ReadBooleanByte();
         }
 
         public override void Write(AssetBinaryWriter writer)

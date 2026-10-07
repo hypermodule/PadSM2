@@ -11,19 +11,20 @@ namespace UAssetAPI.PropertyTypes.Objects
         Normal,
         Array,
         Map,
-        StructFallback // a StructPropertyData with custom struct serialization falling back to standard serialization before/after reading custom data
+        StructFallback, // a StructPropertyData with custom struct serialization falling back to standard serialization before/after reading custom data
+        CanBeZero
     }
 
     [Flags]
     public enum EPropertyTagFlags
     {
-        None						= 0x00,
-        HasArrayIndex				= 0x01,
-        HasPropertyGuid				= 0x02,
-        HasPropertyExtensions		= 0x04,
-        HasBinaryOrNativeSerialize	= 0x08,
-        BoolTrue					= 0x10,
-        SkippedSerialize            = 0x20,
+        None = 0x00,
+        HasArrayIndex = 0x01,
+        HasPropertyGuid = 0x02,
+        HasPropertyExtensions = 0x04,
+        HasBinaryOrNativeSerialize = 0x08,
+        BoolTrue = 0x10,
+        SkippedSerialize = 0x20,
     }
 
     [Flags]
@@ -39,7 +40,7 @@ namespace UAssetAPI.PropertyTypes.Objects
         /// <summary>
         /// no overridden operation was recorded on this property
         /// </summary>
-        None =	0,
+        None = 0,
         /// <summary>
         /// some sub property has recorded overridden operation
         /// </summary>
@@ -97,7 +98,7 @@ namespace UAssetAPI.PropertyTypes.Objects
 
         public void SetAsParent(FName dad, FName modulePath = null)
         {
-            if (dad != null) Ancestors.Add(string.IsNullOrEmpty(modulePath?.Value?.Value) ? dad : FName.DefineDummy(null, modulePath.Value.Value + "." + dad.Value.Value));
+            if (dad != null) Ancestors.Add(string.IsNullOrEmpty(modulePath?.Value?.Value) ? dad : FName.DefineDummy(null, modulePath.ToString() + "." + dad.ToString()));
         }
     }
 
@@ -128,6 +129,7 @@ namespace UAssetAPI.PropertyTypes.Objects
         /// <summary>
         /// An optional property GUID. Nearly always null.
         /// </summary>
+        [JsonProperty]
         public Guid? PropertyGuid = null;
 
         /// <summary>
@@ -260,7 +262,7 @@ namespace UAssetAPI.PropertyTypes.Objects
             }
             else if (PropertyTagFlags.HasFlag(EPropertyTagFlags.HasPropertyGuid))
             {
-                PropertyGuid = new Guid(reader.ReadBytes(16));
+                PropertyGuid = reader.ReadGuid();
             }
 
             if (reader.Asset.ObjectVersionUE5 >= ObjectVersionUE5.PROPERTY_TAG_EXTENSION_AND_OVERRIDABLE_SERIALIZATION)
@@ -317,25 +319,30 @@ namespace UAssetAPI.PropertyTypes.Objects
                     if (PropertyTagExtensions.HasFlag(EPropertyTagExtension.OverridableInformation))
                     {
                         writer.Write((byte)OverrideOperation);
-                        writer.Write(bExperimentalOverridableLogic ? 1 : 0);
+                        writer.WriteBooleanInt(bExperimentalOverridableLogic);
                     }
                 }
             }
         }
 
         /// <summary>
-        /// Does the body of this property entirely consist of null bytes? If so, the body can be skipped during serialization in unversioned properties.
+        /// Does the body of this property entirely consist of null bytes? If so, the body can be skipped during serialization with unversioned properties.
+        /// <para/>
+        /// Note that this method performs a full write of the property, and is thus performance-intensive.
+        /// Container properties may wish to check for the following two conditions to know when to exit early:
+        /// <para/>
+        /// serializationContext == PropertySerializationContext.CanBeZero &amp;&amp; ((CanBeZeroStream)writer.BaseStream).HasWrittenNonZero
         /// </summary>
         /// <param name="asset">The asset to test serialization within.</param>
         /// <returns>Whether or not the property can be serialized as zero.</returns>
         public virtual bool CanBeZero(UAsset asset)
         {
-            MemoryStream testStrm = new MemoryStream(32); this.Write(new AssetBinaryWriter(testStrm, asset), false); byte[] testByteArray = testStrm.ToArray();
-            foreach (byte entry in testByteArray)
-            {
-                if (entry != 0) return false;
-            }
-            return true;
+            CanBeZeroStream testStrm = new CanBeZeroStream(new MemoryStream(32));
+            AssetBinaryWriter binaryWriter = new AssetBinaryWriter(testStrm, asset);
+            this.Write(binaryWriter, false, PropertySerializationContext.CanBeZero);
+            binaryWriter.Flush();
+            testStrm.Flush();
+            return !testStrm.HasWrittenNonZero;
         }
 
         /// <summary>

@@ -48,13 +48,13 @@ public class FUniqueNetId
             writer.Write(Type);
         writer.Write(Contents);
 
-        return size+sizeof(int);
+        return size + sizeof(int);
     }
 }
 
 public class UniqueNetIdReplPropertyData : PropertyData<FUniqueNetId>
 {
-    public UniqueNetIdReplPropertyData(FName name) : base(name) { } 
+    public UniqueNetIdReplPropertyData(FName name) : base(name) { }
 
     public UniqueNetIdReplPropertyData() { }
 
@@ -84,7 +84,7 @@ public class UniqueNetIdReplPropertyData : PropertyData<FUniqueNetId>
             writer.Write(0);
             return sizeof(int);
         }
-      
+
         return Value.Write(writer);
     }
 }

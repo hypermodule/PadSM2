@@ -17,7 +17,7 @@ public class ClothTetherDataPropertyData : StructPropertyData
     private static readonly FString CurrentPropertyType = new FString("ClothTetherData");
     public override bool HasCustomStructSerialization => true;
     public override FString PropertyType => CurrentPropertyType;
-    
+
 
     public override void Read(AssetBinaryReader reader, bool includeHeader, long leng1, long leng2 = 0, PropertySerializationContext serializationContext = PropertySerializationContext.Normal)
     {

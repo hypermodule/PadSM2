@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using UAssetAPI.CustomVersions;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.UnrealTypes;
@@ -9,6 +11,68 @@ using UAssetAPI.Unversioned;
 
 namespace UAssetAPI
 {
+    /// <summary>
+    /// Pass-through stream for detecting non-zero byte writes for CanBeZero.
+    /// </summary>
+    internal class CanBeZeroStream : Stream
+    {
+        public Stream InnerStream;
+        public bool HasWrittenNonZero = false;
+
+        public CanBeZeroStream(Stream innerStream)
+        {
+            InnerStream = innerStream;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return InnerStream.Read(buffer, offset, count);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (!HasWrittenNonZero)
+            {
+                foreach (byte entry in buffer)
+                {
+                    if (entry != 0)
+                    {
+                        HasWrittenNonZero = true;
+                        break;
+                    }
+                }
+            }
+            InnerStream.Write(buffer, offset, count);
+        }
+
+        public override long Position
+        {
+            get => InnerStream.Position;
+            set => InnerStream.Position = value;
+        }
+        public override long Length => InnerStream.Length;
+        public override bool CanRead => InnerStream.CanRead;
+        public override bool CanSeek => InnerStream.CanSeek;
+        public override bool CanWrite => InnerStream.CanWrite;
+        public override void Flush() => InnerStream.Flush();
+        public override long Seek(long offset, SeekOrigin origin) => InnerStream.Seek(offset, origin);
+        public override void SetLength(long value) => InnerStream.SetLength(value);
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                InnerStream.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => InnerStream.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => InnerStream.WriteAsync(buffer, offset, count, cancellationToken);
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => InnerStream.FlushAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Any binary writer used in the parsing of Unreal file types.
     /// </summary>
@@ -85,6 +149,16 @@ namespace UAssetAPI
             Write(new FString(value));
         }
 
+        public virtual void Write(Guid value)
+        {
+            Write(value.ToByteArray());
+        }
+
+        public virtual void WriteBooleanInt(bool value)
+        {
+            Write((int)(value ? 1 : 0));
+        }
+
         public virtual int Write(FString value)
         {
             switch (value?.Value)
@@ -133,8 +207,9 @@ namespace UAssetAPI
                     for (int i = 0; i < num; i++)
                     {
                         if (CustomVersionContainer[i].Version <= 0 || !CustomVersionContainer[i].IsSerialized) continue;
+                        if (CustomVersionContainer[i].Key == CustomVersion.UnusedCustomVersionKey) continue;
                         realNum++;
-                        Write(CustomVersionContainer[i].Key.ToByteArray());
+                        Write(CustomVersionContainer[i].Key);
                         Write(CustomVersionContainer[i].Version);
                         Write(CustomVersionContainer[i].Name);
                     }
@@ -152,8 +227,9 @@ namespace UAssetAPI
                     for (int i = 0; i < num; i++)
                     {
                         if (CustomVersionContainer[i].Version < 0 || !CustomVersionContainer[i].IsSerialized) continue;
+                        if (CustomVersionContainer[i].Key == CustomVersion.UnusedCustomVersionKey) continue;
                         realNum++;
-                        Write(CustomVersionContainer[i].Key.ToByteArray());
+                        Write(CustomVersionContainer[i].Key);
                         Write(CustomVersionContainer[i].Version);
                     }
 
@@ -206,7 +282,7 @@ namespace UAssetAPI
             if (Asset.ObjectVersion >= ObjectVersion.VER_UE4_PROPERTY_GUID_IN_PROPERTY_TAG)
             {
                 Write(guid != null);
-                if (guid != null) Write(((Guid)guid).ToByteArray());
+                if (guid != null) Write((Guid)guid);
             }
         }
 
@@ -238,7 +314,7 @@ namespace UAssetAPI
         public int XFERSTRING(string val)
         {
             long startMetric = this.BaseStream.Position;
-            this.Write(Encoding.ASCII.GetBytes(val + "\0"));
+            this.Write(Encoding.UTF8.GetBytes(val + "\0"));
             return (int)(this.BaseStream.Position - startMetric);
         }
 
